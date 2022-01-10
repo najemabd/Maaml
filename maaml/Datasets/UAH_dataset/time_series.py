@@ -37,14 +37,14 @@ class PathBuilder:
             )
             if dataset_dir == "":
                 print("\nno entry, loading default directory")
-                parent_dir = "UAH-DRIVESET-v1"
+                PARENT_DIR = "UAH-DRIVESET-v1"
             else:
-                parent_dir = dataset_dir
+                PARENT_DIR = dataset_dir
         else:
-            parent_dir = str(dataset_dir)
+            PARENT_DIR = str(dataset_dir)
         if verbose == 1:
-            print(f"\nthe selected dataset directory is: {parent_dir}")
-        return parent_dir
+            print(f"\nthe selected dataset directory is: {PARENT_DIR}")
+        return PARENT_DIR
 
     def case_path_selection(self, driver, state, roadtype, selector=1, verbose=1):
         directory2 = None
@@ -338,7 +338,7 @@ class PathBuilder:
 
     def data_type_selection(self, datatype):
         self.datatype = datatype
-        sensor_file = [
+        SENSOR_FILE = [
             "RAW_GPS.txt",
             "RAW_ACCELEROMETERS.txt",
             "PROC_LANE_DETECTION.txt",
@@ -355,23 +355,23 @@ class PathBuilder:
         else:
             datatype = str(datatype)
         if datatype == "GPS" or datatype == "1":
-            return sensor_file[0]
+            return SENSOR_FILE[0]
         elif datatype == "Accelerometer" or datatype == "2":
-            return sensor_file[1]
+            return SENSOR_FILE[1]
         elif datatype == "lane detection" or datatype == "3":
-            return sensor_file[2]
+            return SENSOR_FILE[2]
         elif datatype == "vehicle detection" or datatype == "4":
-            return sensor_file[3]
+            return SENSOR_FILE[3]
         elif datatype == "open street map" or datatype == "5":
-            return sensor_file[4]
+            return SENSOR_FILE[4]
         elif datatype == "lane change events" or datatype == "6":
-            return sensor_file[5]
+            return SENSOR_FILE[5]
         elif datatype == "inertial events" or datatype == "7":
-            return sensor_file[6]
+            return SENSOR_FILE[6]
         elif datatype == "semantics final" or datatype == "8":
-            return sensor_file[7]
+            return SENSOR_FILE[7]
         elif datatype == "semantics online" or datatype == "9":
-            return sensor_file[8]
+            return SENSOR_FILE[8]
         else:
             print(
                 "ERROR: No such data type or misspelling, try to write it correctly or remove the '', \nyou can also use the data type numbers"
@@ -399,7 +399,7 @@ class DataReader:
     def uah_dataset_columns(self, path, data):
         self.path = path
         self.data
-        sensor_file = [
+        SENSOR_FILE = [
             "RAW_GPS.txt",
             "RAW_ACCELEROMETERS.txt",
             "PROC_LANE_DETECTION.txt",
@@ -410,7 +410,7 @@ class DataReader:
             "SEMANTIC_FINAL.txt",
             "SEMANTIC_ONLINE.txt",
         ]
-        if sensor_file[0] in path:
+        if SENSOR_FILE[0] in path:
             data_column_names = [
                 "Timestamp (seconds)",
                 "Speed (km/h)",
@@ -423,7 +423,7 @@ class DataReader:
                 "Difcourse: course variation (degrees)",
             ]
             data = data.drop([9, 10, 11, 12], axis=1)
-        elif sensor_file[1] in path:
+        elif SENSOR_FILE[1] in path:
             data_column_names = [
                 "Timestamp (seconds)",
                 "Boolean of system activated (1 if >50km/h)",
@@ -441,7 +441,7 @@ class DataReader:
                 data = data.drop(11, axis=1)
             except Exception:
                 data = data
-        elif sensor_file[2] in path:
+        elif SENSOR_FILE[2] in path:
             data_column_names = [
                 "Timestamp (seconds)",
                 "X: car position relative to lane center (meters)",
@@ -449,7 +449,7 @@ class DataReader:
                 "W: road width (meters)",
                 "State of the lane det. algorithm [-1=calibrating,0=initializing, 1=undetected, 2=detected/running]",
             ]
-        elif sensor_file[3] in path:
+        elif SENSOR_FILE[3] in path:
             data_column_names = [
                 "Timestamp (seconds)",
                 "Distance to ahead vehicle in current lane (meters) [value -1 means no car is detected in front]",
@@ -458,7 +458,7 @@ class DataReader:
                 "GPS speed (km/h) [same as in RAW GPS]",
             ]
             data = data.drop(5, axis=1)
-        elif sensor_file[4] in path:
+        elif SENSOR_FILE[4] in path:
             data_column_names = [
                 "Timestamp (seconds)",
                 "Maximum allowed speed of current road (km/h)",
@@ -472,7 +472,7 @@ class DataReader:
                 "GPS speed (km/h) [same as in RAW GPS]",
             ]
             data = data.drop(10, axis=1)
-        elif sensor_file[5] in path:
+        elif SENSOR_FILE[5] in path:
             data_column_names = [
                 "Timestamp (seconds)",
                 "Type [+ indicates right and - left, 1 indicates normal lane change and 2 slow lane change]",
@@ -481,7 +481,7 @@ class DataReader:
                 "Duration of the lane change (seconds) [measured since the car position is near the lane marks]",
                 "Time threshold to consider irregular change (secs.) [slow if change duration is over this threshold and fast if duration is lower than threshold/3]",
             ]
-        elif sensor_file[6] in path:
+        elif SENSOR_FILE[6] in path:
             data_column_names = [
                 "Timestamp (seconds)",
                 "Type (1=braking, 2=turning, 3=acceleration)",
@@ -491,7 +491,7 @@ class DataReader:
                 "Date of the event in YYYYMMDDhhmmss format",
             ]
             data = data.drop(6, axis=1)
-        elif sensor_file[7] in path:
+        elif SENSOR_FILE[7] in path:
             data_column_names = [
                 "Hour of route start",
                 "Minute of route start",
@@ -549,7 +549,7 @@ class DataReader:
                 "Ratio aggressive (base 1)",
             ]
             data = data.transpose()
-        elif sensor_file[8] in path:
+        elif SENSOR_FILE[8] in path:
             data_column_names = [
                 "TimeStamp since route start (seconds)",
                 "GPS Latitude (degrees)",
@@ -627,7 +627,7 @@ class DataCleaner:
         else:
             self.data_merged = self.data_windowed
         self.data_interpolated = self.data_interpolating(
-            self.data_merged, timestamp_column=timestamp_column, verbose=verbose
+            self.data_merged, timestamp_columns=timestamp_column, verbose=verbose
         )
         self.dataset = self.removing_incomplete_raws(
             self.data_interpolated, verbose=verbose
@@ -639,10 +639,10 @@ class DataCleaner:
                 verbose=verbose,
             )
         if save_dataset == True:
-            newpath = "dataset"
-            if not os.path.exists(newpath):
-                os.makedirs(newpath)
-            self.dataset.to_csv(f"{newpath}/{name_dataset}.csv")
+            NEW_PATH = "dataset"
+            if not os.path.exists(NEW_PATH):
+                os.makedirs(NEW_PATH)
+            self.dataset.to_csv(f"{NEW_PATH}/{name_dataset}.csv", index=False)
 
     @staticmethod
     def window_stepping(data=[], window_size=0, step=0, average_window=True, verbose=1):
@@ -731,7 +731,9 @@ class DataCleaner:
         return data_merged
 
     @staticmethod
-    def data_interpolating(data=[], timestamp_column="Timestamp (seconds)", verbose=1):
+    def data_interpolating(
+        data=[], timestamp_columns=["Timestamp (seconds)"], verbose=1
+    ):
         try:
             if verbose == 1:
                 print(
@@ -740,7 +742,7 @@ class DataCleaner:
             if data.isnull().values.any() == True:
                 if verbose == 1:
                     print("\n       Executing interpolation     \n")
-                missing_values = data.drop([timestamp_column], axis=1)
+                missing_values = data.drop(timestamp_columns, axis=1)
                 missing_values = missing_values.interpolate(method="cubic", limit=3)
                 data[missing_values.columns] = missing_values
                 data_interpolated = data
@@ -892,20 +894,20 @@ class UAHDatasetBuilder:
                             self.path_list.append(file1.path)
                             self.path_list2.append(file2.path)
         if save_dataset == True:
-            newpath = "dataset"
-            if not os.path.exists(newpath):
-                os.makedirs(newpath)
-            self.data.to_csv(f"{newpath}/{name_dataset}.csv")
+            NEW_PATH = "dataset"
+            if not os.path.exists(NEW_PATH):
+                os.makedirs(NEW_PATH)
+            self.data.to_csv(f"{NEW_PATH}/{name_dataset}.csv", index=False)
             if verbose == 1:
                 print(
-                    f"\n\033[1m++++++++++++ UAHDATASET IS SAVED IN FILE : {os.getcwd()}/{newpath}/{name_dataset}.csv ++++++++++++\033[0m\n"
+                    f"\n\033[1m++++++++++++ UAHDATASET IS SAVED IN FILE : {os.getcwd()}/{NEW_PATH}/{name_dataset}.csv ++++++++++++\033[0m\n"
                 )
 
 
 if __name__ == "__main__":
-    data_dir_path = "/run/media/najem/34b207a8-0f0c-4398-bba2-f31339727706/home/stock/The_stock/dev & datasets/PhD/datasets/UAH-DRIVESET-v1/"
+    DATA_DIR_PATH = "/run/media/najem/34b207a8-0f0c-4398-bba2-f31339727706/home/stock/The_stock/dev & datasets/PhD/datasets/UAH-DRIVESET-v1/"
     dataset = UAHDatasetBuilder(
-        data_dir_path,
+        DATA_DIR_PATH,
         1,
         2,
         window_size_dt2=10,

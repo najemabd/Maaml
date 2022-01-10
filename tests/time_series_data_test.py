@@ -1,4 +1,4 @@
-from maaml.Datasets.UAH_dataset.data_boot import (
+from maaml.Datasets.UAH_dataset.time_series import (
     PathBuilder,
     DataReader,
     DataCleaner,
