@@ -1,3 +1,3 @@
 from maaml.Datasets.UAH_dataset import time_series
 from maaml.Datasets.UAH_dataset import data_acquisition
-from maaml import preprocessing_and_ML_functions_build
+from maaml.preprocessing import preprocessing_and_ML_functions_build

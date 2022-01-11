@@ -38,7 +38,14 @@ class DataPreprocessor:
     ):
         if dataset is None or isinstance(dataset, str):
             if from_csv is True:
-                if dataset == "UAHdataset":
+                if dataset in [
+                    "UAHdataset",
+                    "uahdataset",
+                    "UAHDataset",
+                    "UAHDATASET",
+                    "uah",
+                    "UAH",
+                ]:
                     self.raw_dataset = self.uahdataset_loading(
                         data_path, specific=specific_data, verbose=verbose
                     )
@@ -55,8 +62,8 @@ class DataPreprocessor:
             self.raw_dataset = dataset
             if verbose == 1:
                 print("Reading from the dataset argement the provided dataframe")
-        self.dataset = self.raw_dataset.drop(labels=droped_columns, axis=1)
-        self.numeric_dataset = self.dataset.copy(deep=True)
+        self.filtered_dataset = self.raw_dataset.drop(labels=droped_columns, axis=1)
+        self.numeric_dataset = self.filtered_dataset.copy(deep=True)
         for column in self.numeric_dataset.columns:
             if (
                 self.numeric_dataset.dtypes[column] != float
@@ -316,7 +323,7 @@ if __name__ == "__main__":
         save_dataset=False,
     )
     print(f"\nthe raw dataset is: \n{preprocessor.raw_dataset}")
-    print(f"\nthe dataset(after dropping columns) is\n{preprocessor.dataset}")
+    print(f"\nthe dataset(after dropping columns) is\n{preprocessor.filtered_dataset}")
     print(f"the label encoded dataset: \n{preprocessor.numeric_dataset}")
     print(f"The used scaler is: {preprocessor.scaler_name}")
     print(f"\nthe scaled dataset is: \n{preprocessor.scaled_dataset}")
