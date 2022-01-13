@@ -123,7 +123,7 @@ class DataPreprocessor:
             NEW_PATH = "preprocessed_dataset"
             if not os.path.exists(NEW_PATH):
                 os.makedirs(NEW_PATH)
-            self.scaled_dataset.to_csv(
+            self.ml_dataset.to_csv(
                 f"{NEW_PATH}/Preprocessed_ml_{name_saved_dataset}.csv",
                 index=False,
             )
@@ -131,7 +131,7 @@ class DataPreprocessor:
                 f"{NEW_PATH}/Preprocessed_{name_saved_dataset}.csv", index=False
             )
             if window_size > 0:
-                self.windowed_dataset.to_csv(
+                self.windowed_ml_dataset.to_csv(
                     f"{NEW_PATH}/Windowed_preprocessed_ml_{name_saved_dataset}.csv",
                     index=False,
                 )

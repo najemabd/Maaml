@@ -1,14 +1,7 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # Import Libraries
-
 import pandas as pd
 import os
 
 # ### the dataset locate function
-
-
 def dataset_path(directory=None):
     if directory == None:
         dataset_dir = input(

@@ -383,7 +383,7 @@ class Evaluator:
 
 
 def main():
-    from maaml.preprocessing.preprocessing import DataPreprocessor as dp
+    from maaml.preprocessing import DataPreprocessor as dp
 
     processed = dp(dataset="UAHdataset", scaler=2)
     uahdataset = processed.preprocessed_dataset
@@ -398,12 +398,6 @@ def main():
         preprocessing_alias=alias,
         full_eval=True,
         save_eval=True,
-    )
-
-
-def test(features, target_column, alias):
-    ml_evaluation = Evaluator(
-        7, features=features, target=target_column, preprocessing_alias=alias, verbose=1
     )
     print("\nThe target list is :", ml_evaluation.target_list)
     print("feature importance : \n", ml_evaluation.feature_importance_ranks)
