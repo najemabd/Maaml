@@ -148,7 +148,7 @@ class DataPreprocessor:
     def uahdataset_loading(path="", specific=None, verbose=1):
         if path == "":
             DATA_PATH = pkg_resources.resource_filename(
-                "maaml", "Datasets/UAH_dataset/dataset/UAHDataset.csv"
+                __name__, "Datasets/UAH_dataset/dataset/UAHDataset.csv"
             )
             print(f"\nloading the internal \033[1mUAHDataset\033[0m from maaml\n")
             data = pd.read_csv(DATA_PATH)
