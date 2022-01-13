@@ -58,12 +58,20 @@ class Evaluator:
                         NEW_PATH = "ML_EVALUATION"
                         if not os.path.exists(NEW_PATH):
                             os.makedirs(NEW_PATH)
-                        np.savetxt(
-                            f"{NEW_PATH}/full_evaluation.csv",
-                            self.evaluation,
-                            delimiter=",",
-                            fmt="%s",
-                        )
+                        if preprocessing_alias is not None:
+                            np.savetxt(
+                                f"{NEW_PATH}/{preprocessing_alias}_full_evaluation.csv",
+                                self.evaluation,
+                                delimiter=",",
+                                fmt="%s",
+                            )
+                        else:
+                            np.savetxt(
+                                f"{NEW_PATH}/full_evaluation.csv",
+                                self.evaluation,
+                                delimiter=",",
+                                fmt="%s",
+                            )
                         if verbose == 1:
                             print(
                                 f"full evaluation saved in:\n{os.getcwd()}/{NEW_PATH}/full_evaluation.csv"
@@ -108,12 +116,20 @@ class Evaluator:
                 NEW_PATH = "ML_EVALUATION"
                 if not os.path.exists(NEW_PATH):
                     os.makedirs(NEW_PATH)
-                np.savetxt(
-                    f"{NEW_PATH}/{self.model_name}_evaluation.csv",
-                    self.evaluation,
-                    delimiter=",",
-                    fmt="%s",
-                )
+                if preprocessing_alias is not None:
+                    np.savetxt(
+                        f"{NEW_PATH}/{preprocessing_alias}_{self.model_name}_evaluation.csv",
+                        self.evaluation,
+                        delimiter=",",
+                        fmt="%s",
+                    )
+                else:
+                    np.savetxt(
+                        f"{NEW_PATH}/{self.model_name}_evaluation.csv",
+                        self.evaluation,
+                        delimiter=",",
+                        fmt="%s",
+                    )
                 if verbose == 1:
                     print(
                         f"evaluation saved in:\n{os.getcwd()}/{NEW_PATH}/{self.model_name}_evaluation.csv"
