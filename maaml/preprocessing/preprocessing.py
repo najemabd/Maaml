@@ -84,6 +84,7 @@ class DataPreprocessor:
             scaler=scaler,
             verbose=verbose,
         )
+        self.ml_dataset = self.scaled_dataset
         self.features = self.scaled_dataset.drop(target_name, axis=1)
         self.target_column = self.scaled_dataset[target_name]
         self.target = self.one_hot_encoding(
@@ -106,6 +107,7 @@ class DataPreprocessor:
                 average_window=average_window,
                 verbose=verbose,
             )
+            self.windowed_ml_dataset = self.windowed_dataset
             self.windowed_features = self.windowed_dataset.drop(target_name, axis=1)
             self.windowed_target_column = self.windowed_dataset[target_name]
             self.windowed_target = self.one_hot_encoding(
@@ -122,7 +124,7 @@ class DataPreprocessor:
             if not os.path.exists(NEW_PATH):
                 os.makedirs(NEW_PATH)
             self.scaled_dataset.to_csv(
-                f"{NEW_PATH}/Preprocessed_rawtarget_{name_saved_dataset}.csv",
+                f"{NEW_PATH}/Preprocessed_ml_{name_saved_dataset}.csv",
                 index=False,
             )
             self.preprocessed_dataset.to_csv(
@@ -130,7 +132,7 @@ class DataPreprocessor:
             )
             if window_size > 0:
                 self.windowed_dataset.to_csv(
-                    f"{NEW_PATH}/Windowed_preprocessed_rawtarget_{name_saved_dataset}.csv",
+                    f"{NEW_PATH}/Windowed_preprocessed_ml_{name_saved_dataset}.csv",
                     index=False,
                 )
                 self.windowed_preprocessed_dataset.to_csv(
