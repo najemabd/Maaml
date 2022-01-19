@@ -35,9 +35,14 @@ class Evaluator:
         test_size=0.3,
         full_eval=False,
         save_eval=False,
+        save_tag=None,
         preprocessing_alias=None,
         verbose=0,
     ):
+        if save_tag is None:
+            save_tag = ""
+        else:
+            save_tag = f"_{save_tag}"
         self.model = i = 1
         target_name = [target_name]
         self.evaluation = []
@@ -55,26 +60,26 @@ class Evaluator:
                 except ValueError:
                     print("full evaluation complete")
                     if save_eval is True:
-                        NEW_PATH = "ML_EVALUATION"
+                        NEW_PATH = f"ML_EVALUATION{save_tag}"
                         if not os.path.exists(NEW_PATH):
                             os.makedirs(NEW_PATH)
                         if preprocessing_alias is not None:
                             np.savetxt(
-                                f"{NEW_PATH}/{preprocessing_alias}_full_evaluation.csv",
+                                f"{NEW_PATH}/{preprocessing_alias}_full_evaluation{save_tag}.csv",
                                 self.evaluation,
                                 delimiter=",",
                                 fmt="%s",
                             )
                         else:
                             np.savetxt(
-                                f"{NEW_PATH}/full_evaluation.csv",
+                                f"{NEW_PATH}/full_evaluation{save_tag}.csv",
                                 self.evaluation,
                                 delimiter=",",
                                 fmt="%s",
                             )
                         if verbose == 1:
                             print(
-                                f"full evaluation saved in:\n{os.getcwd()}/{NEW_PATH}/full_evaluation.csv"
+                                f"full evaluation saved in:\n{os.getcwd()}/{NEW_PATH}/full_evaluation{save_tag}.csv"
                             )
                     break
             if "SVC" in str(self.model):
@@ -113,26 +118,26 @@ class Evaluator:
             )
             self.evaluation.extend(self.cross_evaluation)
             if save_eval is True and full_eval is False:
-                NEW_PATH = "ML_EVALUATION"
+                NEW_PATH = f"ML_EVALUATION{save_tag}"
                 if not os.path.exists(NEW_PATH):
                     os.makedirs(NEW_PATH)
                 if preprocessing_alias is not None:
                     np.savetxt(
-                        f"{NEW_PATH}/{preprocessing_alias}_{self.model_name}_evaluation.csv",
+                        f"{NEW_PATH}/{preprocessing_alias}_{self.model_name}{save_tag}_evaluation.csv",
                         self.evaluation,
                         delimiter=",",
                         fmt="%s",
                     )
                 else:
                     np.savetxt(
-                        f"{NEW_PATH}/{self.model_name}_evaluation.csv",
+                        f"{NEW_PATH}/{self.model_name}{save_tag}_evaluation.csv",
                         self.evaluation,
                         delimiter=",",
                         fmt="%s",
                     )
                 if verbose == 1:
                     print(
-                        f"evaluation saved in:\n{os.getcwd()}/{NEW_PATH}/{self.model_name}_evaluation.csv"
+                        f"evaluation saved in:\n{os.getcwd()}/{NEW_PATH}/{self.model_name}{save_tag}_evaluation.csv"
                     )
 
             try:
