@@ -913,6 +913,6 @@ if __name__ == "__main__":
         window_size_dt2=10,
         step_dt2=10,
         verbose=1,
-        save_dataset=True,
+        save_dataset=False,
     )
     print(f"The dataset shape: {dataset.data.shape}")

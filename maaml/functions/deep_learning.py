@@ -25,7 +25,7 @@ from sklearn.metrics import (
     cohen_kappa_score,
     roc_auc_score,
 )
-from tensorflow.keras.layers import (
+from keras.layers import (
     Dense,
     Conv2D,
     MaxPooling2D,
@@ -36,9 +36,9 @@ from tensorflow.keras.layers import (
     Add,
     Activation,
 )
-from tensorflow.keras.models import Model, load_model, save_model
+from keras.models import Model, load_model, save_model
 from sklearn.model_selection import train_test_split, ShuffleSplit
-from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from matplotlib import pyplot
 
 # ## functions

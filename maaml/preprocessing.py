@@ -85,12 +85,12 @@ class DataPreprocessor:
             verbose=verbose,
         )
         self.ml_dataset = self.scaled_dataset
-        self.features = self.scaled_dataset.drop(target_name, axis=1)
-        self.target_column = self.scaled_dataset[target_name]
+        self.features = self.ml_dataset.drop(target_name, axis=1)
+        self.target_column = self.ml_dataset[target_name]
         self.target = self.one_hot_encoding(
-            self.scaled_dataset, target=target_name, verbose=verbose
+            self.ml_dataset, target=target_name, verbose=verbose
         )
-        self.preprocessed_dataset = self.features.copy(deep=True)
+        self.preprocessed_dataset = self.ml_dataset.copy(deep=True)
         for i in self.target.columns:
             column_name = f"target {i}"
             self.preprocessed_dataset[column_name] = self.target[i]
@@ -99,7 +99,7 @@ class DataPreprocessor:
                 print(
                     "\n\033[1mThe window steeping can take some time depending on the dataset (for UAHDataset, it is between 1 to 5 minutes)\033[0m"
                 )
-            self.windowed_dataset = self.scaled_dataset.copy(deep=True)
+            self.windowed_dataset = self.ml_dataset.copy(deep=True)
             self.windowed_dataset = self.window_stepping(
                 self.windowed_dataset,
                 window_size=window_size,
@@ -108,12 +108,14 @@ class DataPreprocessor:
                 verbose=verbose,
             )
             self.windowed_ml_dataset = self.windowed_dataset
-            self.windowed_features = self.windowed_dataset.drop(target_name, axis=1)
-            self.windowed_target_column = self.windowed_dataset[target_name]
+            self.windowed_features = self.windowed_ml_dataset.drop(target_name, axis=1)
+            self.windowed_target_column = self.windowed_ml_dataset[target_name]
             self.windowed_target = self.one_hot_encoding(
-                self.windowed_dataset, target=target_name, verbose=verbose
+                self.windowed_ml_dataset, target=target_name, verbose=verbose
             )
-            self.windowed_preprocessed_dataset = self.windowed_features.copy(deep=True)
+            self.windowed_preprocessed_dataset = self.windowed_ml_dataset.copy(
+                deep=True
+            )
             for i in self.windowed_target.columns:
                 column_name = f"target {i}"
                 self.windowed_preprocessed_dataset[column_name] = self.windowed_target[
