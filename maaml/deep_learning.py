@@ -116,6 +116,7 @@ class Evaluator:
         preprocessing_alias=None,
         input_shape=None,
         cross_eval=True,
+        save_tag=None,
         nb_splits=5,
         test_size=0.3,
         callbacks="best model",
@@ -127,6 +128,10 @@ class Evaluator:
         batch_size=60,
         verbose=1,
     ):
+        if save_tag is None or save_tag == "":
+            save_tag = ""
+        else:
+            save_tag = f"_{save_tag}"
         self.model = model
         self.model_name = model_name if model_name is not None else model.name
         target_name = [target_name]
@@ -146,6 +151,7 @@ class Evaluator:
                 target_names=self.target_list,
                 model_name=self.model_name,
                 preprocessing_alias=preprocessing_alias,
+                save_tag=save_tag,
                 input_shape=input_shape,
                 callbacks=callbacks,
                 learning_rate=learning_rate,
@@ -270,23 +276,23 @@ class Evaluator:
         pred = best_model.predict(X_test, batch_size=batch_size, verbose=1)
         predictions = np.argmax(pred, axis=1)
         train_eval = best_model.evaluate(X_train, Y_ohe_train, verbose=verbose)
-        train_score = train_eval[1] * 100
+        train_score = train_eval[1]
         exec_time = f"{(end_time - start_time): .2f} (s)"
-        acc_score = accuracy_score(Y_test.values, predictions, normalize=True) * 100
-        pres_score = precision_score(Y_test.values, predictions, average="macro") * 100
-        rec_score = recall_score(Y_test.values, predictions, average="macro") * 100
-        f1 = f1_score(Y_test.values, predictions, average="macro") * 100
-        cokap_score = cohen_kappa_score(Y_test.values, predictions) * 100
-        roc_auc = roc_auc_score(Y_ohe_test.values, pred) * 100
+        acc_score = accuracy_score(Y_test.values, predictions, normalize=True)
+        pres_score = precision_score(Y_test.values, predictions, average="macro")
+        rec_score = recall_score(Y_test.values, predictions, average="macro")
+        f1 = f1_score(Y_test.values, predictions, average="macro")
+        cokap_score = cohen_kappa_score(Y_test.values, predictions)
+        roc_auc = roc_auc_score(Y_ohe_test.values, pred)
         scores = [
             f"execution time: {exec_time}",
-            f"train accuracy: {train_score: .4f}% ",
-            f"accuracy: {acc_score: .4f}%",
-            f"precision: {pres_score: .4f}%",
-            f"recall: {rec_score: .4f}%",
-            f"F1 score: {f1: .4f}%",
-            f"cohen kappa: {cokap_score: .4f}%",
-            f"roc_auc_score: {roc_auc: .4f}%",
+            f"train accuracy: {train_score: .4%} ",
+            f"accuracy: {acc_score: .4%}",
+            f"precision: {pres_score: .4%}",
+            f"recall: {rec_score: .4%}",
+            f"F1 score: {f1: .4%}",
+            f"cohen kappa: {cokap_score: .4%}",
+            f"roc_auc_score: {roc_auc: .4%}",
         ]
         if verbose == 1:
             print(scores)
@@ -303,6 +309,7 @@ class Evaluator:
         model_name,
         preprocessing_alias,
         input_shape,
+        save_tag="",
         callbacks="best model",
         learning_rate="scheduler",
         nb_splits=5,
@@ -340,20 +347,20 @@ class Evaluator:
             print(
                 f"\033[1m\n*******begin cross validation in fold number:{len(train_acc_scores) + 1}*******\033[0m"
             )
-            newpath = "cross_validation"
+            newpath = f"DL_EVALUATION{save_tag}"
             if not os.path.exists(newpath):
                 os.makedirs(newpath)
             if callbacks == "best model":
                 if any(c.isdigit() for c in platform.node()) == True:
                     mc = ModelCheckpoint(
-                        "/content/drive/MyDrive/best_model.h5",
+                        f"/content/drive/MyDrive/best_model{save_tag}.h5",
                         monitor="val_accuracy",
                         save_best_only=True,
                         verbose=2,
                     )
                 else:
                     mc = ModelCheckpoint(
-                        f"{newpath}/cv_best_model.h5",
+                        f"{newpath}/cv_best_model{save_tag}.h5",
                         monitor="val_accuracy",
                         save_best_only=True,
                         verbose=2,
@@ -378,15 +385,16 @@ class Evaluator:
             training_history = history.history
             if any(c.isdigit() for c in platform.node()) == True:
                 pd.DataFrame(training_history).to_csv(
-                    r"/content/drive/MyDrive/training_history.csv", index=False
+                    f"/content/drive/MyDrive/training_history{save_tag}.csv",
+                    index=False,
                 )
             else:
                 pd.DataFrame(training_history).to_csv(
-                    f"{newpath}/training_history.csv", index=False
+                    f"{newpath}/training_history{save_tag}.csv", index=False
                 )
             if callbacks == "best model":
                 try:
-                    best_model = load_model(f"{newpath}/cv_best_model.h5")
+                    best_model = load_model(f"{newpath}/cv_best_model{save_tag}.h5")
                 except Exception:
                     print(
                         "exception triggered, can't load the saved best model, the best model is the current one"
@@ -396,27 +404,26 @@ class Evaluator:
                 best_model = model
             save_model(
                 best_model,
-                f"{newpath}/cv_best_model{len(train_acc_scores) + 1}.h5",
+                f"{newpath}/cv_best_model{save_tag}{len(train_acc_scores) + 1}.h5",
             )
             pred = best_model.predict(X[test], batch_size=batch_size, verbose=0)
             predictions = np.argmax(pred, axis=1)
             exec_time.append((end_time - start_time))
             train_acc_scores.append(
                 best_model.evaluate(X[train], Y_ohe.loc[train], verbose=verbose)[1]
-                * 100
             )
             acc_scores.append(
-                accuracy_score(Y[test].values, predictions, normalize=True) * 100
+                accuracy_score(Y[test].values, predictions, normalize=True)
             )
             pres_scores.append(
-                precision_score(Y[test].values, predictions, average="macro") * 100
+                precision_score(Y[test].values, predictions, average="macro")
             )
             rec_scores.append(
-                recall_score(Y[test].values, predictions, average="macro") * 100
+                recall_score(Y[test].values, predictions, average="macro")
             )
-            f1.append(f1_score(Y[test].values, predictions, average="macro") * 100)
-            cokap_scores.append(cohen_kappa_score(Y[test].values, predictions) * 100)
-            roc_auc_scores.append(roc_auc_score(Y_ohe.loc[test].values, pred) * 100)
+            f1.append(f1_score(Y[test].values, predictions, average="macro"))
+            cokap_scores.append(cohen_kappa_score(Y[test].values, predictions))
+            roc_auc_scores.append(roc_auc_score(Y_ohe.loc[test].values, pred))
         cv_scores["metrics"] = [
             "preprocessing",
             "execution time",
@@ -431,16 +438,17 @@ class Evaluator:
         cv_scores[model_name] = [
             preprocessing_alias,
             f"{np.mean(exec_time): .2f} (s)",
-            f"{np.mean(train_acc_scores):.4f}% (+/- {np.std(train_acc_scores):.4f}%)",
-            f"{np.mean(acc_scores):.4f}% (+/- {np.std(acc_scores):.4f}%)",
-            f"{np.mean(pres_scores):.4f}% (+/- {np.std(pres_scores):.4f}%)",
-            f"{np.mean(rec_scores):.4f}% (+/- {np.std(rec_scores):.4f}%)",
-            f"{np.mean(f1):.4f}% (+/- {np.std(f1):.4f}%)",
-            f"{np.mean(cokap_scores):.4f}% (+/- {np.std(cokap_scores):.4f}%)",
-            f"{np.mean(roc_auc_scores):.4f}% (+/- {np.std(roc_auc_scores):.4f}%)",
+            f"{np.mean(train_acc_scores):.4%} (+/- {np.std(train_acc_scores):.4%})",
+            f"{np.mean(acc_scores):.4%} (+/- {np.std(acc_scores):.4%})",
+            f"{np.mean(pres_scores):.4%} (+/- {np.std(pres_scores):.4%})",
+            f"{np.mean(rec_scores):.4%} (+/- {np.std(rec_scores):.4%})",
+            f"{np.mean(f1):.4%} (+/- {np.std(f1):.4%})",
+            f"{np.mean(cokap_scores):.4%} (+/- {np.std(cokap_scores):.4%})",
+            f"{np.mean(roc_auc_scores):.4%} (+/- {np.std(roc_auc_scores):.4%})",
         ]
         cv_scores.to_csv(
-            f"{newpath}/cross_validation_scores_{preprocessing_alias}.csv", index=False
+            f"{newpath}/cross_validation_{preprocessing_alias}{save_tag}.csv",
+            index=False,
         )
         return cv_scores
 
@@ -471,6 +479,7 @@ def main():
         dataset=uahdataset,
         target_name="target",
         preprocessing_alias=alias,
+        save_tag="test",
         input_shape=model_build.input_shape,
         cross_eval=True,
         epochs=2,

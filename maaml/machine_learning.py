@@ -39,7 +39,7 @@ class Evaluator:
         preprocessing_alias=None,
         verbose=0,
     ):
-        if save_tag is None:
+        if save_tag is None or save_tag == "":
             save_tag = ""
         else:
             save_tag = f"_{save_tag}"
@@ -262,45 +262,40 @@ class Evaluator:
             except ValueError:
                 Y_values = Y.values.reshape(-1, 1).ravel()
                 pred = model.fit(X.loc[train], Y_values[train]).predict(X.loc[test])
-            acc_scores.append(
-                accuracy_score(Y_values[test], pred, normalize=True) * 100
-            )
-            pres_scores.append(
-                precision_score(Y_values[test], pred, average="macro") * 100
-            )
-            rec_scores.append(recall_score(Y_values[test], pred, average="macro") * 100)
-            f1.append(f1_score(Y_values[test], pred, average="macro") * 100)
+            acc_scores.append(accuracy_score(Y_values[test], pred, normalize=True))
+            pres_scores.append(precision_score(Y_values[test], pred, average="macro"))
+            rec_scores.append(recall_score(Y_values[test], pred, average="macro"))
+            f1.append(f1_score(Y_values[test], pred, average="macro"))
             cokap_scores.append(
                 cohen_kappa_score(Y_values[test].reshape(-1, 1), pred.reshape(-1, 1))
-                * 100
             )
             if len(target_names) <= 1:
-                roc_auc_scores.append(roc_auc_score(y_testb, pred.reshape(-1, 1)) * 100)
+                roc_auc_scores.append(roc_auc_score(y_testb, pred.reshape(-1, 1)))
             else:
                 try:
-                    roc_auc_scores.append(roc_auc_score(y_testb, pred) * 100)
+                    roc_auc_scores.append(roc_auc_score(y_testb, pred))
                 except ValueError:
                     roc_auc_scores.append(
-                        roc_auc_score(Y_values[test].reshape(-1, 1), pred) * 100
+                        roc_auc_score(Y_values[test].reshape(-1, 1), pred)
                     )
         end_time = time.perf_counter()
         cv_scores = [
             ["MLclassifier", f"{self.model_name}"],
             ["execution time", f"{((end_time-start_time) / nb_splits): .2f} (s)"],
-            ["accuracy", f"{np.mean(acc_scores):.2f}% (+/- {np.std(acc_scores):.2f}%)"],
+            ["accuracy", f"{np.mean(acc_scores):.4%} (+/- {np.std(acc_scores):.4%})"],
             [
                 "precision",
-                f"{np.mean(pres_scores):.2f}% (+/- {np.std(pres_scores):.2f}%)",
+                f"{np.mean(pres_scores):.4%} (+/- {np.std(pres_scores):.4%})",
             ],
-            ["recall", f"{np.mean(rec_scores):.2f}% (+/- {np.std(rec_scores):.2f}%)"],
-            ["F1", f"{np.mean(f1):.2f}% (+/- {np.std(f1):.2f}%)"],
+            ["recall", f"{np.mean(rec_scores):.4%} (+/- {np.std(rec_scores):.4%})"],
+            ["F1", f"{np.mean(f1):.4%} (+/- {np.std(f1):.4%})"],
             [
                 "cohen_kappa",
-                f"{np.mean(cokap_scores):.2f}% (+/- {np.std(cokap_scores):.2f}%)",
+                f"{np.mean(cokap_scores):.4%} (+/- {np.std(cokap_scores):.4%})",
             ],
             [
                 "roc_auc",
-                f"{np.mean(roc_auc_scores):.2f}% (+/- {np.std(roc_auc_scores):.2f}%)",
+                f"{np.mean(roc_auc_scores):.4%}% (+/- {np.std(roc_auc_scores):.4%}%)",
             ],
         ]
         if preprocessing_alias is not None:
