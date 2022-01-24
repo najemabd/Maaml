@@ -1,6 +1,5 @@
 import pkg_resources
 import pandas as pd
-import os
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.preprocessing import (
     StandardScaler,
@@ -11,6 +10,7 @@ from sklearn.preprocessing import (
     PowerTransformer,
     Normalizer,
 )
+from maaml.utils import save_csv
 
 
 class DataPreprocessor:
@@ -33,7 +33,7 @@ class DataPreprocessor:
         average_window=False,
         from_csv=True,
         save_dataset=False,
-        name_saved_dataset="Dataset",
+        saved_tag="Dataset",
         verbose=0,
     ):
         if dataset is None or isinstance(dataset, str):
@@ -58,7 +58,7 @@ class DataPreprocessor:
                             )
                     except Exception:
                         print("\nError reading data, verify the provided path")
-        else:
+        elif dataset is not None:
             self.raw_dataset = dataset
             if verbose == 1:
                 print("Reading from the dataset argement the provided dataframe")
@@ -86,18 +86,19 @@ class DataPreprocessor:
         )
         self.ml_dataset = self.scaled_dataset
         self.features = self.ml_dataset.drop(target_name, axis=1)
-        self.target_column = self.ml_dataset[target_name]
-        self.target = self.one_hot_encoding(
+        self.target = self.ml_dataset[target_name]
+        self.target_ohe = self.one_hot_encoding(
             self.ml_dataset, target=target_name, verbose=verbose
         )
         self.preprocessed_dataset = self.ml_dataset.copy(deep=True)
-        for i in self.target.columns:
+        for i in self.target_ohe.columns:
             column_name = f"target {i}"
-            self.preprocessed_dataset[column_name] = self.target[i]
+            self.preprocessed_dataset[column_name] = self.target_ohe[i]
+        self.dl_dataset = self.preprocessed_dataset
         if window_size > 0:
             if verbose == 1:
                 print(
-                    "\n\033[1mThe window steeping can take some time depending on the dataset (for UAHDataset, it is between 1 to 5 minutes)\033[0m"
+                    "\n\033[1mThe window stepping can take some time depending on the dataset \033[0m"
                 )
             self.windowed_dataset = self.ml_dataset.copy(deep=True)
             self.windowed_dataset = self.window_stepping(
@@ -107,43 +108,33 @@ class DataPreprocessor:
                 average_window=average_window,
                 verbose=verbose,
             )
-            self.windowed_ml_dataset = self.windowed_dataset
-            self.windowed_features = self.windowed_ml_dataset.drop(target_name, axis=1)
-            self.windowed_target_column = self.windowed_ml_dataset[target_name]
-            self.windowed_target = self.one_hot_encoding(
-                self.windowed_ml_dataset, target=target_name, verbose=verbose
+            self.ml_dataset_w = self.windowed_dataset
+            self.features_w = self.ml_dataset_w.drop(target_name, axis=1)
+            self.target_w = self.ml_dataset_w[target_name]
+            self.target_ohe_w = self.one_hot_encoding(
+                self.ml_dataset_w, target=target_name, verbose=verbose
             )
-            self.windowed_preprocessed_dataset = self.windowed_ml_dataset.copy(
-                deep=True
-            )
-            for i in self.windowed_target.columns:
+            self.preprocessed_dataset_w = self.ml_dataset_w.copy(deep=True)
+            for i in self.target_ohe_w.columns:
                 column_name = f"target {i}"
-                self.windowed_preprocessed_dataset[column_name] = self.windowed_target[
-                    i
-                ]
+                self.preprocessed_dataset_w[column_name] = self.target_ohe_w[i]
+            self.dl_dataset_w = self.preprocessed_dataset_w
         if save_dataset == True:
-            NEW_PATH = "preprocessed_dataset"
-            if not os.path.exists(NEW_PATH):
-                os.makedirs(NEW_PATH)
-            self.ml_dataset.to_csv(
-                f"{NEW_PATH}/Preprocessed_ml_{name_saved_dataset}.csv",
-                index=False,
-            )
-            self.preprocessed_dataset.to_csv(
-                f"{NEW_PATH}/Preprocessed_{name_saved_dataset}.csv", index=False
-            )
+            PATH = "preprocessed_dataset"
+            save_csv(self.ml_dataset, PATH, f"ml_{saved_tag}", verbose=verbose)
+            save_csv(self.dl_dataset, PATH, f"dl_{saved_tag}", verbose=verbose)
             if window_size > 0:
-                self.windowed_ml_dataset.to_csv(
-                    f"{NEW_PATH}/Windowed_preprocessed_ml_{name_saved_dataset}.csv",
-                    index=False,
+                save_csv(
+                    self.ml_dataset_w,
+                    PATH,
+                    f"ml_{saved_tag}_w({window_size})_s({step})",
+                    verbose=verbose,
                 )
-                self.windowed_preprocessed_dataset.to_csv(
-                    f"{NEW_PATH}/Windowed_preprocessed_{name_saved_dataset}.csv",
-                    index=False,
-                )
-            if verbose == 1:
-                print(
-                    f"\n\033[1mPREPROCESSED DATASETS ARE SAVED IN THIS DIRECTORY : {os.getcwd()}/{NEW_PATH}/ \nWith the name similar to: Preprocessed_{name_saved_dataset}.csv  \033[0m\n"
+                save_csv(
+                    self.dl_dataset_w,
+                    PATH,
+                    f"dl_{saved_tag}_w({window_size})_s({step})",
+                    verbose=verbose,
                 )
 
     @staticmethod
@@ -324,7 +315,7 @@ if __name__ == "__main__":
         window_size=60,
         step=10,
         verbose=1,
-        save_dataset=False,
+        save_dataset=True,
     )
     print(f"\nthe raw dataset is: \n{preprocessor.raw_dataset}")
     print(f"\nthe dataset(after dropping columns) is\n{preprocessor.filtered_dataset}")
@@ -332,17 +323,15 @@ if __name__ == "__main__":
     print(f"The used scaler is: {preprocessor.scaler_name}")
     print(f"\nthe scaled dataset is: \n{preprocessor.scaled_dataset}")
     print(f"\nthe dataset features are: \n{preprocessor.features}")
-    print(f"\nthe dataset target column is: \n{preprocessor.target_column}")
-    print(f"\nthe dataset one hot encoded target is: \n{preprocessor.target}")
+    print(f"\nthe dataset target column is: \n{preprocessor.target}")
+    print(f"\nthe dataset one hot encoded target is: \n{preprocessor.target_ohe}")
     print(f"\nthe full preprocessed dataset is: \n{preprocessor.preprocessed_dataset}")
     print("\n ******* windowed data ******* \n")
-    print(f"\nthe dataset windowed features are: \n{preprocessor.windowed_features}")
+    print(f"\nthe dataset windowed features are: \n{preprocessor.features_w}")
+    print(f"\nthe dataset windowed target column is: \n{preprocessor.target_w}")
     print(
-        f"\nthe dataset windowed target column is: \n{preprocessor.windowed_target_column}"
+        f"\nthe dataset windowed one hot encoded target is: \n{preprocessor.target_ohe_w}"
     )
     print(
-        f"\nthe dataset windowed one hot encoded target is: \n{preprocessor.windowed_target}"
-    )
-    print(
-        f"\nthe full windowed preprocessed dataset is: \n{preprocessor.windowed_preprocessed_dataset}"
+        f"\nthe full windowed preprocessed dataset is: \n{preprocessor.preprocessed_dataset_w}"
     )

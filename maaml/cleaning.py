@@ -1,5 +1,5 @@
-import os
 import pandas as pd
+from maaml.utils import save_csv
 
 
 class DataReader:
@@ -57,10 +57,8 @@ class DataCleaner:
                 verbose=verbose,
             )
         if save_dataset == True:
-            NEW_PATH = "dataset"
-            if not os.path.exists(NEW_PATH):
-                os.makedirs(NEW_PATH)
-            self.dataset.to_csv(f"{NEW_PATH}/{name_dataset}.csv", index=False)
+            PATH = "dataset"
+            save_csv(self.dataset, PATH, name_dataset, verbose=verbose)
 
     @staticmethod
     def window_stepping(data=[], window_size=0, step=0, average_window=True, verbose=1):
@@ -262,6 +260,7 @@ if __name__ == "__main__":
     cleaning = DataCleaner(
         data,
         add_columns_dictionnary={"axis": [12, 4, 5, 7, 5, 8, 2, 5, 4]},
+        save_dataset=True,
         verbose=1,
     )
     print(cleaning.data_raw)

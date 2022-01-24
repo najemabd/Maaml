@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from maaml.utils import save_csv
 
 
 class PathBuilder:
@@ -639,10 +640,8 @@ class DataCleaner:
                 verbose=verbose,
             )
         if save_dataset == True:
-            NEW_PATH = "dataset"
-            if not os.path.exists(NEW_PATH):
-                os.makedirs(NEW_PATH)
-            self.dataset.to_csv(f"{NEW_PATH}/{name_dataset}.csv", index=False)
+            PATH = "dataset"
+            save_csv(self.dataset, PATH, name_dataset, verbose=verbose)
 
     @staticmethod
     def window_stepping(data=[], window_size=0, step=0, average_window=True, verbose=1):
@@ -894,14 +893,8 @@ class UAHDatasetBuilder:
                             self.path_list.append(file1.path)
                             self.path_list2.append(file2.path)
         if save_dataset == True:
-            NEW_PATH = "dataset"
-            if not os.path.exists(NEW_PATH):
-                os.makedirs(NEW_PATH)
-            self.data.to_csv(f"{NEW_PATH}/{name_dataset}.csv", index=False)
-            if verbose == 1:
-                print(
-                    f"\n\033[1m++++++++++++ UAHDATASET IS SAVED IN FILE : {os.getcwd()}/{NEW_PATH}/{name_dataset}.csv ++++++++++++\033[0m\n"
-                )
+            PATH = "dataset"
+            save_csv(self.data, PATH, name_dataset, verbose=verbose)
 
 
 if __name__ == "__main__":

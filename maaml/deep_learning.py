@@ -9,9 +9,11 @@ from keras.layers import (
     Add,
     Activation,
 )
+import time
+import platform
+from matplotlib import pyplot
 from keras.models import Model, load_model, save_model
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler
-from sklearn.model_selection import train_test_split, ShuffleSplit
 from maaml.machine_learning import (
     accuracy_score,
     precision_score,
@@ -19,13 +21,11 @@ from maaml.machine_learning import (
     f1_score,
     cohen_kappa_score,
     roc_auc_score,
-    classification_report,
+    train_test_split,
+    ShuffleSplit,
+    np,
 )
-import numpy as np
-import pandas as pd
-import time
-import platform
-import os
+from maaml.utils import save_csv
 
 
 class DeepRCNModel:
@@ -84,6 +84,9 @@ class DeepRCNModel:
         )(self.eighteenth_layer)
         self.model = Model(self.input_layer, self.output_layer, name="DeepRCNModel")
 
+    def __call__(self):
+        return self.model
+
     @staticmethod
     def resnet_block_creating(input_data, filters, conv_size):
         x = Conv2D(
@@ -113,8 +116,8 @@ class Evaluator:
         target=None,
         target_name="target",
         model_name: str = None,
-        preprocessing_alias=None,
         input_shape=None,
+        preprocessing_alias=None,
         cross_eval=True,
         save_tag=None,
         nb_splits=5,
@@ -128,11 +131,9 @@ class Evaluator:
         batch_size=60,
         verbose=1,
     ):
-        if save_tag is None or save_tag == "":
-            save_tag = ""
-        else:
-            save_tag = f"_{save_tag}"
-        self.model = model
+        self.save_tag = "" if save_tag is None or save_tag == "" else f"_{save_tag}"
+        if preprocessing_alias is None:
+            preprocessing_alias = ""
         self.model_name = model_name if model_name is not None else model.name
         target_name = [target_name]
         self.target_list = []
@@ -143,7 +144,7 @@ class Evaluator:
                         self.target_list.append(column_name)
         if cross_eval is True:
             self.cross_evaluation = self.cross_validating(
-                model=self.model,
+                model=model,
                 dataset=dataset,
                 features=features,
                 target_column=target_column,
@@ -151,8 +152,8 @@ class Evaluator:
                 target_names=self.target_list,
                 model_name=self.model_name,
                 preprocessing_alias=preprocessing_alias,
-                save_tag=save_tag,
                 input_shape=input_shape,
+                save_tag=self.save_tag,
                 callbacks=callbacks,
                 learning_rate=learning_rate,
                 nb_splits=nb_splits,
@@ -171,7 +172,7 @@ class Evaluator:
                 self.training_history,
                 self.evaluation,
             ) = self.model_training(
-                model=self.model,
+                model=model,
                 dataset=dataset,
                 features=features,
                 target_column=target_column,
@@ -179,6 +180,7 @@ class Evaluator:
                 target_names=self.target_list,
                 model_name=self.model_name,
                 input_shape=input_shape,
+                save_tag=self.save_tag,
                 callbacks=callbacks,
                 learning_rate=learning_rate,
                 test_size=test_size,
@@ -199,6 +201,7 @@ class Evaluator:
         target,
         target_names,
         input_shape,
+        save_tag="",
         callbacks="best model",
         learning_rate="scheduler",
         test_size=0.3,
@@ -211,29 +214,21 @@ class Evaluator:
     ):
         start_time = time.perf_counter()
         if dataset is not None:
-            X, Y, Y_ohe = (
-                dataset.drop(target_names, axis=1),
-                dataset[target_names[0]],
-                dataset[target_names[1:]],
-            )
+            X = dataset.drop(target_names, axis=1)
+            Y = dataset[target_names[0]]
+            Y_ohe = dataset[target_names[1:]]
         elif features is not None and target is not None:
             X, Y, Y_ohe = features, target_column, target
         X = np.reshape(X.values, (len(X), *input_shape))
+        if any(c.isdigit() for c in platform.node()) == True:
+            PATH = "/content/drive/MyDrive/"
+        else:
+            PATH = f"DL_EVALUATION{save_tag}/"
         if callbacks == "best model":
-            if any(c.isdigit() for c in platform.node()) == True:
-                mc = ModelCheckpoint(
-                    "/content/drive/MyDrive/best_model.h5",
-                    monitor="val_accuracy",
-                    save_best_only=True,
-                    verbose=2,
-                )
-            else:
-                mc = ModelCheckpoint(
-                    "best_model.h5",
-                    monitor="val_accuracy",
-                    save_best_only=True,
-                    verbose=2,
-                )
+            filepath = PATH + "best_model.h5"
+            mc = ModelCheckpoint(
+                filepath, monitor="val_accuracy", save_best_only=True, verbose=2
+            )
             cb = [mc]
             if learning_rate == "scheduler":
                 lrs = LearningRateScheduler(self.learning_rate_sheduling)
@@ -241,10 +236,9 @@ class Evaluator:
         elif callbacks == None:
             cb = None
         model.compile(loss=loss, optimizer=opt, metrics=metrics)
-        X_train, X_test, Y_ohe_train, Y_ohe_test = train_test_split(
-            X, Y_ohe, test_size=test_size, random_state=10
+        X_train, X_test, Y_ohe_train, Y_ohe_test, _, Y_test = train_test_split(
+            X, Y_ohe, Y, test_size=test_size, random_state=10
         )
-        _, _, _, Y_test = train_test_split(X, Y, test_size=test_size, random_state=10)
         history = model.fit(
             X_train,
             Y_ohe_train,
@@ -256,21 +250,16 @@ class Evaluator:
         )
         end_time = time.perf_counter()
         training_history = history.history
-        if any(c.isdigit() for c in platform.node()) == True:
-            pd.DataFrame(training_history).to_csv(
-                r"/content/drive/MyDrive/training_history.csv", index=False
-            )
-        else:
-            pd.DataFrame(training_history).to_csv(r"training_history.csv", index=False)
+        save_csv(training_history, PATH, "training_history")
         if callbacks == "best model":
             try:
-                best_model = load_model("/content/drive/MyDrive/best_model.h5")
+                best_model = load_model(filepath)
             except Exception:
                 try:
                     best_model = load_model("best_model.h5")
                 except Exception:
                     print(
-                        "exception triggered, can't load the saved best model, the best model is the current one"
+                        "Can't load the saved best model,revert to best_model = model"
                     )
                     best_model = model
         pred = best_model.predict(X_test, batch_size=batch_size, verbose=1)
@@ -307,8 +296,8 @@ class Evaluator:
         target,
         target_names,
         model_name,
-        preprocessing_alias,
         input_shape,
+        preprocessing_alias="",
         save_tag="",
         callbacks="best model",
         learning_rate="scheduler",
@@ -323,14 +312,18 @@ class Evaluator:
     ):
         start_time = time.perf_counter()
         if dataset is not None:
-            X, Y, Y_ohe = (
-                dataset.drop(target_names, axis=1),
-                dataset[target_names[0]],
-                dataset[target_names[1:]],
-            )
+            X = dataset.drop(target_names, axis=1)
+            Y = dataset[target_names[0]]
+            Y_ohe = dataset[target_names[1:]]
         elif features is not None and target is not None:
             X, Y, Y_ohe = features, target_column, target
         X = np.reshape(X.values, (len(X), *input_shape))
+        if any(c.isdigit() for c in platform.node()) == True:
+            PATH = "/content/drive/MyDrive/"
+        else:
+            PATH = f"DL_EVALUATION{save_tag}/"
+        model_path = PATH + "base_model.h5"
+        save_model(model, model_path)
         cv = ShuffleSplit(n_splits=nb_splits, test_size=test_size, random_state=10)
         (
             exec_time,
@@ -342,37 +335,24 @@ class Evaluator:
             cokap_scores,
             roc_auc_scores,
         ) = ([], [], [], [], [], [], [], [])
-        cv_scores = pd.DataFrame()
+        cv_scores = {}
         for train, test in cv.split(X, Y, Y_ohe):
-            print(
-                f"\033[1m\n*******begin cross validation in fold number:{len(train_acc_scores) + 1}*******\033[0m"
-            )
-            newpath = f"DL_EVALUATION{save_tag}"
-            if not os.path.exists(newpath):
-                os.makedirs(newpath)
+            prompt_message = f"\033[1m\n*******begin cross validation in fold number:{len(train_acc_scores) + 1}*******\033[0m"
+            print(prompt_message)
             if callbacks == "best model":
-                if any(c.isdigit() for c in platform.node()) == True:
-                    mc = ModelCheckpoint(
-                        f"/content/drive/MyDrive/best_model{save_tag}.h5",
-                        monitor="val_accuracy",
-                        save_best_only=True,
-                        verbose=2,
-                    )
-                else:
-                    mc = ModelCheckpoint(
-                        f"{newpath}/cv_best_model{save_tag}.h5",
-                        monitor="val_accuracy",
-                        save_best_only=True,
-                        verbose=2,
-                    )
+                filepath = PATH + f"cv_best_model{len(train_acc_scores) + 1}.h5"
+                mc = ModelCheckpoint(
+                    filepath, monitor="val_accuracy", save_best_only=True, verbose=1
+                )
                 cb = [mc]
                 if learning_rate == "scheduler":
                     lrs = LearningRateScheduler(self.learning_rate_sheduling)
                     cb.append(lrs)
             elif callbacks == None:
                 cb = None
-            model.compile(loss=loss, optimizer=opt, metrics=metrics)
-            history = model.fit(
+            cv_model = load_model(model_path, compile=False)
+            cv_model.compile(loss=loss, optimizer=opt, metrics=metrics)
+            history = cv_model.fit(
                 X[train],
                 Y_ohe.loc[train],
                 validation_data=(X[test], Y_ohe.loc[test]),
@@ -383,29 +363,23 @@ class Evaluator:
             )
             end_time = time.perf_counter()
             training_history = history.history
-            if any(c.isdigit() for c in platform.node()) == True:
-                pd.DataFrame(training_history).to_csv(
-                    f"/content/drive/MyDrive/training_history{save_tag}.csv",
-                    index=False,
-                )
-            else:
-                pd.DataFrame(training_history).to_csv(
-                    f"{newpath}/training_history{save_tag}.csv", index=False
-                )
+            save_csv(
+                training_history,
+                PATH,
+                f"training_history_cv{len(train_acc_scores) + 1}",
+            )
             if callbacks == "best model":
                 try:
-                    best_model = load_model(f"{newpath}/cv_best_model{save_tag}.h5")
+                    best_model = load_model(filepath)
                 except Exception:
                     print(
-                        "exception triggered, can't load the saved best model, the best model is the current one"
+                        "Can't load the saved best model,revert to best_model = cv_model"
                     )
-                    best_model = model
+                    best_model = cv_model
             elif callbacks == None:
-                best_model = model
-            save_model(
-                best_model,
-                f"{newpath}/cv_best_model{save_tag}{len(train_acc_scores) + 1}.h5",
-            )
+                best_model = cv_model
+                saved_model_path = PATH + f"cv_model{len(train_acc_scores) + 1}.h5"
+                save_model(best_model, saved_model_path)
             pred = best_model.predict(X[test], batch_size=batch_size, verbose=0)
             predictions = np.argmax(pred, axis=1)
             exec_time.append((end_time - start_time))
@@ -446,21 +420,75 @@ class Evaluator:
             f"{np.mean(cokap_scores):.4%} (+/- {np.std(cokap_scores):.4%})",
             f"{np.mean(roc_auc_scores):.4%} (+/- {np.std(roc_auc_scores):.4%})",
         ]
-        cv_scores.to_csv(
-            f"{newpath}/cross_validation_{preprocessing_alias}{save_tag}.csv",
-            index=False,
-        )
+        save_csv(cv_scores, PATH, f"cross_validation_{preprocessing_alias}{save_tag}")
         return cv_scores
 
     @staticmethod
     def learning_rate_sheduling(
-        epoch, scheduler_threshold=480, initial_lrate=0.001, second_lrate=0.0001
+        epoch, lrate, initial_lrate=0.001, second_lrate=0.0001, scheduler_threshold=480
     ):
         lrate = initial_lrate
-        if epoch > 480:
+        if epoch > scheduler_threshold:
             lrate = second_lrate
             print("Change in the learning rate, the new learning rate is:", lrate)
         return lrate
+
+    @staticmethod
+    def plot_learning_rate(
+        training_history, save=False, metric="accuracy", style="default"
+    ):
+        styles = [
+            "seaborn-poster",
+            "seaborn-bright",
+            "Solarize_Light2",
+            "seaborn-whitegrid",
+            "_classic_test_patch",
+            "seaborn-white",
+            "fivethirtyeight",
+            "seaborn-deep",
+            "seaborn",
+            "seaborn-dark-palette",
+            "seaborn-paper",
+            "seaborn-darkgrid",
+            "seaborn-notebook",
+            "grayscale",
+            "seaborn-muted",
+            "seaborn-dark",
+            "seaborn-talk",
+            "ggplot",
+            "bmh",
+            "dark_background",
+            "fast",
+            "seaborn-ticks",
+            "seaborn-colorblind",
+            "classic",
+        ]
+        if type(style) is int:
+            try:
+                style = styles[style]
+            except Exception:
+                warning_message = "back to default style, wrong style entry, choose style from 0 to 23"
+                print(warning_message)
+                style = "default"
+        pyplot.style.use(style)
+        pyplot.figure(figsize=(20, 10))
+        pyplot.title(f"{metric} ({len(training_history)} ephocs)")
+        x = [i for i in range(0, len(training_history))]
+        if metric == "all":
+            for column in training_history.columns:
+                if column != "Unnamed: 0":
+                    pyplot.plot(x, training_history[column], label=str(column))
+                    pyplot.legend()
+                    pyplot.grid(True)
+                    if save == True:
+                        pyplot.savefig("plot.png")
+        else:
+            pyplot.plot(x, training_history[f"{metric}"], label="train")
+            pyplot.plot(x, training_history[f"val_{metric}"], label="test")
+            pyplot.legend()
+            pyplot.grid(True)
+            if save == True:
+                pyplot.savefig("plot.png")
 
 
 def main():
@@ -469,13 +497,10 @@ def main():
     processed = dp(dataset="UAHdataset", scaler=2)
     uahdataset = processed.preprocessed_dataset
     alias = processed.scaler_name
-    features = processed.features
-    target_column = processed.target_column
-    target = processed.target
     model_build = DeepRCNModel()
     model_build.show()
     evaluation = Evaluator(
-        model_build.model,
+        model_build(),
         dataset=uahdataset,
         target_name="target",
         preprocessing_alias=alias,

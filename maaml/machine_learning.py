@@ -5,7 +5,6 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
-
 from sklearn.model_selection import ShuffleSplit, train_test_split
 from sklearn.preprocessing import label_binarize
 from sklearn.metrics import (
@@ -19,7 +18,7 @@ from sklearn.metrics import (
 )
 import numpy as np
 import time
-import os
+from maaml.utils import save_csv, dict_transpose
 
 
 class Evaluator:
@@ -39,118 +38,65 @@ class Evaluator:
         preprocessing_alias=None,
         verbose=0,
     ):
-        if save_tag is None or save_tag == "":
-            save_tag = ""
-        else:
-            save_tag = f"_{save_tag}"
+        save_tag = "" if save_tag is None or save_tag == "" else f"_{save_tag}"
+        PATH = f"ML_EVALUATION{save_tag}"
+        if preprocessing_alias is not None:
+            save_tag = f"_{preprocessing_alias}" + save_tag
         self.model = i = 1
-        target_name = [target_name]
-        self.evaluation = []
+        self.evaluation = {}
         while True:
             if full_eval is False:
-                self.model = self.model_building(
-                    model_name=model_name, paramater=paramater, verbose=verbose
-                )
+                self.model = self.model_building(model_name, paramater, verbose)
             elif full_eval is True:
                 try:
-                    self.model = self.model_building(
-                        model_name=i, paramater=paramater, verbose=verbose
-                    )
+                    self.model = self.model_building(i, paramater, verbose)
                     i += 1
                 except ValueError:
                     print("full evaluation complete")
+                    self.evaluation = dict_transpose(self.evaluation)
                     if save_eval is True:
-                        NEW_PATH = f"ML_EVALUATION{save_tag}"
-                        if not os.path.exists(NEW_PATH):
-                            os.makedirs(NEW_PATH)
-                        if preprocessing_alias is not None:
-                            np.savetxt(
-                                f"{NEW_PATH}/{preprocessing_alias}_full_evaluation{save_tag}.csv",
-                                self.evaluation,
-                                delimiter=",",
-                                fmt="%s",
-                            )
-                        else:
-                            np.savetxt(
-                                f"{NEW_PATH}/full_evaluation{save_tag}.csv",
-                                self.evaluation,
-                                delimiter=",",
-                                fmt="%s",
-                            )
-                        if verbose == 1:
-                            print(
-                                f"full evaluation saved in:\n{os.getcwd()}/{NEW_PATH}/full_evaluation{save_tag}.csv"
-                            )
+                        self.tag = f"full_evaluation{save_tag}"
+                        save_csv(self.evaluation, PATH, self.tag, verbose)
                     break
+
             if "SVC" in str(self.model):
-                self.model_name = (
-                    str(self.model).replace("SVC", "SVMClassifier").replace("()", "")
-                )
-            else:
-                self.model_name = str(self.model).replace("()", "")
-            self.target_list = []
-            if dataset is not None:
-                for column_name in dataset.columns:
-                    for keyname in target_name:
-                        if keyname in column_name:
-                            self.target_list.append(column_name)
-            elif dataset is None:
-                try:
-                    if target.shape[1] > 1:
-                        for name in range(0, target.shape[1]):
-                            self.target_list.append(f"{target_name[0]} {name}")
-                except IndexError:
-                    self.target_list = target_name
-                except Exception:
-                    print("ERROR: Something went wrong in the entry target")
-                    return
-            else:
-                print("ERROR: bad target name or bad target name entry ")
+                self.model_name = str(self.model).replace("SVC", "SVMClassifier")
+            self.model_name = str(self.model).replace("()", "")
+
             self.cross_evaluation = self.model_cross_validating(
-                features=features,
-                target=target,
-                dataset=dataset,
-                target_names=self.target_list,
-                nb_splits=nb_splits,
-                test_size=test_size,
-                preprocessing_alias=preprocessing_alias,
-                verbose=verbose,
+                features,
+                target,
+                dataset,
+                target_name,
+                nb_splits,
+                test_size,
+                preprocessing_alias,
+                verbose,
             )
-            self.evaluation.extend(self.cross_evaluation)
-            if save_eval is True and full_eval is False:
-                NEW_PATH = f"ML_EVALUATION{save_tag}"
-                if not os.path.exists(NEW_PATH):
-                    os.makedirs(NEW_PATH)
-                if preprocessing_alias is not None:
-                    np.savetxt(
-                        f"{NEW_PATH}/{preprocessing_alias}_{self.model_name}{save_tag}_evaluation.csv",
-                        self.evaluation,
-                        delimiter=",",
-                        fmt="%s",
-                    )
-                else:
-                    np.savetxt(
-                        f"{NEW_PATH}/{self.model_name}{save_tag}_evaluation.csv",
-                        self.evaluation,
-                        delimiter=",",
-                        fmt="%s",
-                    )
-                if verbose == 1:
-                    print(
-                        f"evaluation saved in:\n{os.getcwd()}/{NEW_PATH}/{self.model_name}{save_tag}_evaluation.csv"
-                    )
+
+            if not self.evaluation:
+                self.evaluation = self.cross_evaluation
+            else:
+                for key in self.cross_evaluation:
+                    self.evaluation[key].append(*self.cross_evaluation[key])
+            if full_eval is False:
+                self.evaluation = dict_transpose(self.evaluation)
+                if save_eval is True:
+                    self.tag = f"{self.model_name}{save_tag}_evaluation"
+                    save_csv(self.evaluation, PATH, self.tag, verbose)
 
             try:
                 self.feature_importance_ranks = self.features_importance_ranking(
-                    dataset=dataset,
-                    classifier=self.model,
-                    target_names=self.target_list,
-                    features=features,
-                    targets=target,
-                    test_size=test_size,
-                    verbose=verbose,
+                    dataset,
+                    self.model,
+                    target_name,
+                    features,
+                    target,
+                    test_size,
+                    verbose,
                 )
-            except Exception:
+            except AttributeError:
+                self.feature_importance_ranks = None
                 if verbose == 1:
                     print(
                         f"The {str(self.model)} does not allow the extraction of feature importance ranks\nSkipping action"
@@ -210,9 +156,8 @@ class Evaluator:
                 f"You entered {model_name}, a number bigger than the number of existant models"
             )
         else:
-            print(
-                "ERROR:wrong entry, this method have 9 diffrent classifiers, you could choose by number or by name"
-            )
+            error_message = "ERROR:wrong entry,you have 9 different classifiers, you could choose by number or by name"
+            print(error_message)
             model = "No model"
         if verbose == 1:
             print(f"\nThe {str(model)} is selected")
@@ -223,7 +168,7 @@ class Evaluator:
         features=None,
         target=None,
         dataset=None,
-        target_names=["target"],
+        target_name="target",
         nb_splits=5,
         test_size=0.3,
         preprocessing_alias=None,
@@ -231,82 +176,74 @@ class Evaluator:
     ):
         start_time = time.perf_counter()
         if dataset is not None:
-            X, Y = dataset.drop(target_names, axis=1), dataset[target_names]
+            X, Y = dataset.drop(target_name, axis=1), dataset[target_name]
         elif features is not None and target is not None:
             X, Y = features, target
         else:
-            print(
-                "ERROR: please enter a dataset with a target_name or enter features and target"
-            )
+            error_message = "ERROR: please enter a dataset with a target_name or you can enter features and target"
+            print(error_message)
             return
         cv = ShuffleSplit(n_splits=nb_splits, test_size=test_size, random_state=10)
-        (
-            acc_scores,
-            pres_scores,
-            rec_scores,
-            f1,
-            cokap_scores,
-            roc_auc_scores,
-            cv_scores,
-        ) = ([], [], [], [], [], [], [])
+        acc_scores, pres_scores, rec_scores, f1, cokap_scores, roc_auc_scores = (
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        )
+        cv_scores = {
+            "MLclassifier": [],
+            "preprocessing": [],
+            "execution time": [],
+            "accuracy": [],
+            "precision": [],
+            "recall": [],
+            "F1": [],
+            "cohen_kappa": [],
+            "roc_auc": [],
+        }
         for train, test in cv.split(X, Y):
-            if len(target_names) <= 1:
-                classes = Y.unique()
-                y_testb = label_binarize(Y[test], classes=classes)
-            else:
-                y_testb = Y.loc[test]
+            classes = Y.unique()
+            y_testb = label_binarize(Y[test], classes=classes)
             Y_values = Y.values
+            Y_reshaped = Y_values.reshape(-1, 1)
             model = self.model
-            try:
-                pred = model.fit(X.loc[train], Y_values[train]).predict(X.loc[test])
-            except ValueError:
-                Y_values = Y.values.reshape(-1, 1).ravel()
-                pred = model.fit(X.loc[train], Y_values[train]).predict(X.loc[test])
+            pred = model.fit(X.loc[train], Y_values[train]).predict(X.loc[test])
+            pred_reshaped = pred.reshape(-1, 1)
             acc_scores.append(accuracy_score(Y_values[test], pred, normalize=True))
             pres_scores.append(precision_score(Y_values[test], pred, average="macro"))
             rec_scores.append(recall_score(Y_values[test], pred, average="macro"))
             f1.append(f1_score(Y_values[test], pred, average="macro"))
-            cokap_scores.append(
-                cohen_kappa_score(Y_values[test].reshape(-1, 1), pred.reshape(-1, 1))
-            )
-            if len(target_names) <= 1:
-                roc_auc_scores.append(roc_auc_score(y_testb, pred.reshape(-1, 1)))
-            else:
-                try:
-                    roc_auc_scores.append(roc_auc_score(y_testb, pred))
-                except ValueError:
-                    roc_auc_scores.append(
-                        roc_auc_score(Y_values[test].reshape(-1, 1), pred)
-                    )
+            cokap_scores.append(cohen_kappa_score(Y_reshaped[test], pred_reshaped))
+            roc_auc_scores.append(roc_auc_score(y_testb, pred_reshaped))
         end_time = time.perf_counter()
-        cv_scores = [
-            ["MLclassifier", f"{self.model_name}"],
-            ["execution time", f"{((end_time-start_time) / nb_splits): .2f} (s)"],
-            ["accuracy", f"{np.mean(acc_scores):.4%} (+/- {np.std(acc_scores):.4%})"],
-            [
-                "precision",
-                f"{np.mean(pres_scores):.4%} (+/- {np.std(pres_scores):.4%})",
-            ],
-            ["recall", f"{np.mean(rec_scores):.4%} (+/- {np.std(rec_scores):.4%})"],
-            ["F1", f"{np.mean(f1):.4%} (+/- {np.std(f1):.4%})"],
-            [
-                "cohen_kappa",
-                f"{np.mean(cokap_scores):.4%} (+/- {np.std(cokap_scores):.4%})",
-            ],
-            [
-                "roc_auc",
-                f"{np.mean(roc_auc_scores):.4%}% (+/- {np.std(roc_auc_scores):.4%}%)",
-            ],
-        ]
+        cv_scores["MLclassifier"].append(self.model_name)
         if preprocessing_alias is not None:
-            cv_scores.insert(1, ["preprocessing", preprocessing_alias])
+            cv_scores["preprocessing"].append(preprocessing_alias)
+        cv_scores["execution time"].append(
+            f"{((end_time-start_time) / nb_splits): .2f} (s)"
+        )
+        cv_scores["accuracy"].append(
+            f"{np.mean(acc_scores):.4%} (+/- {np.std(acc_scores):.4%})"
+        )
+        cv_scores["precision"].append(
+            f"{np.mean(pres_scores):.4%} (+/- {np.std(pres_scores):.4%})"
+        )
+        cv_scores["recall"].append(
+            f"{np.mean(rec_scores):.4%} (+/- {np.std(rec_scores):.4%})"
+        )
+        cv_scores["F1"].append(f"{np.mean(f1):.4%} (+/- {np.std(f1):.4%})")
+        cv_scores["cohen_kappa"].append(
+            f"{np.mean(cokap_scores):.4%} (+/- {np.std(cokap_scores):.4%})"
+        )
+        cv_scores["roc_auc"].append(
+            f"{np.mean(roc_auc_scores):.4%} (+/- {np.std(roc_auc_scores):.4%})"
+        )
         if verbose == 1:
-            for i, v in enumerate(cv_scores):
-                if i == 0:
-                    print(f"\033[1m\n{v[0]}:{v[1]}\033[0m")
-                else:
-                    print(f"cross validation {v[0]}: {v[1]}")
-            print("\n")
+            print("\n\033[1mCross validation results: \033[0m")
+            for i, v in cv_scores.items():
+                print(f"{i}: {v[0]}")
         if verbose == 2:
             print(f"\nAccuracy evaluation for the separate splits:\n{acc_scores}")
             print(f"\nPrecision evaluation for the separate splits:\n{pres_scores}")
@@ -320,15 +257,15 @@ class Evaluator:
     def features_importance_ranking(
         dataset=None,
         classifier=None,
-        target_names=["target"],
+        target_name="target",
         features=None,
         targets=None,
         test_size=0.3,
         verbose=0,
     ):
-        if dataset is not None and target_names is not None:
-            x = dataset.drop(target_names, axis=1)
-            y = dataset[target_names].values
+        if dataset is not None and target_name is not None:
+            x = dataset.drop(target_name, axis=1)
+            y = dataset[target_name].values
         elif dataset is None:
             x = features
             y = targets.values
@@ -365,15 +302,15 @@ class Evaluator:
     def model_evaluating(
         dataset=None,
         classifier=None,
-        target_names=["target"],
+        target_name="target",
         features=None,
         targets=None,
         test_size=0.3,
         verbose=0,
     ):
-        if dataset is not None and target_names is not None:
-            x = dataset.drop(target_names, axis=1)
-            y = dataset[target_names].values
+        if dataset is not None and target_name is not None:
+            x = dataset.drop(target_name, axis=1)
+            y = dataset[target_name].values
         elif dataset is None:
             x = features
             y = targets.values
@@ -402,21 +339,17 @@ def main():
     from maaml.preprocessing import DataPreprocessor as dp
 
     processed = dp(dataset="UAHdataset", scaler=2)
-    uahdataset = processed.preprocessed_dataset
+    uahdataset = processed.ml_dataset
     alias = processed.scaler_name
-    features = processed.features
-    target_column = processed.target_column
-    target = processed.target
     ml_evaluation = Evaluator(
         3,
         dataset=uahdataset,
         verbose=1,
         preprocessing_alias=alias,
-        full_eval=True,
+        full_eval=False,
         save_eval=True,
     )
-    print("\nThe target list is :", ml_evaluation.target_list)
-    print("feature importance : \n", ml_evaluation.feature_importance_ranks)
+    print(f"feature importance :\n{ml_evaluation.feature_importance_ranks}")
 
 
 if __name__ == "__main__":
