@@ -33,7 +33,7 @@ class DataPreprocessor:
         average_window=False,
         from_csv=True,
         save_dataset=False,
-        saved_tag="Dataset",
+        save_tag="Dataset",
         verbose=0,
     ):
         if dataset is None or isinstance(dataset, str):

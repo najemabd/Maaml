@@ -227,7 +227,7 @@ class Evaluator:
         if callbacks == "best model":
             filepath = PATH + "best_model.h5"
             mc = ModelCheckpoint(
-                filepath, monitor="val_accuracy", save_best_only=True, verbose=2
+                filepath, monitor="val_accuracy", save_best_only=True, verbose=1
             )
             cb = [mc]
             if learning_rate == "scheduler":
