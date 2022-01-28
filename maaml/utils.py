@@ -65,7 +65,11 @@ def save_parquet(df, path, name, verbose=0, prompt=None):
             print(prompt)
 
 
+<<<<<<< HEAD
 def read_csv(path, delimiter=" ",header=None verbose=0, prompt=None):
+=======
+def read_csv(path, delimiter=" ", header=None, verbose=0, prompt=None):
+>>>>>>> develop
     df_csv = pd.read_table(path, header=header, delimiter=delimiter)
     if verbose == 1:
         if prompt is None:
