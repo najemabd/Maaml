@@ -3,9 +3,12 @@ from maaml.utils import save_csv
 
 
 class DataReader:
-    def __init__(self, path, delimiter=" "):
+    def __init__(self, path, header=None, delimiter=" "):
         self.path = path
-        self.data = pd.read_table(path, header=None, delimiter=delimiter)
+        self.data = pd.read_table(path, header=header, delimiter=delimiter)
+
+    def __call__(self):
+        return self.data
 
 
 class DataCleaner:
