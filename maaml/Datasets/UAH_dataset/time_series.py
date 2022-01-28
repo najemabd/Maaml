@@ -382,20 +382,20 @@ class PathBuilder:
 
 
 class DataReader:
-    def __init__(self, path, dataset_name=None, from_string=True, delimiter=" "):
+    def __init__(self, path, dataset_name=None, from_string=True,header=None delimiter=" "):
         self.path = path
         if from_string is True:
             if dataset_name == "UAHdataset":
                 if "SEMANTIC_FINAL" in path:
                     delimiter = None
                 try:
-                    self.data = pd.read_table(path, header=None, delimiter=delimiter)
+                    self.data = pd.read_table(path, header=header, delimiter=delimiter)
                     self.data = self.uah_dataset_columns(path, self.data)
                 except Exception:
                     print("\nERROR: please verify the entry path name for DataReader")
                     print("\nEmpty data table generated")
             else:
-                self.data = pd.read_table(path, header=None, delimiter=delimiter)
+                self.data = pd.read_table(path, header=header, delimiter=delimiter)
 
     def uah_dataset_columns(self, path, data):
         self.path = path
