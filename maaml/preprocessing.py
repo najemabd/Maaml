@@ -11,6 +11,7 @@ from sklearn.preprocessing import (
     Normalizer,
 )
 from maaml.utils import save_csv
+import time
 
 
 class DataPreprocessor:
@@ -30,12 +31,14 @@ class DataPreprocessor:
         no_scaling_columns=["target"],
         window_size=0,
         step=0,
-        average_window=False,
+        window_transformation=False,
+        window_transformation_function=lambda x: sum(x) / len(x),
         from_csv=True,
         save_dataset=False,
         save_tag="Dataset",
         verbose=0,
     ):
+        start_time = time.perf_counter()
         if dataset is None or isinstance(dataset, str):
             if from_csv is True:
                 if dataset in [
@@ -105,14 +108,18 @@ class DataPreprocessor:
                 self.windowed_dataset,
                 window_size=window_size,
                 step=step,
-                average_window=average_window,
+                window_transformation=window_transformation,
+                transformation_fn=window_transformation_function,
                 verbose=verbose,
             )
             self.ml_dataset_w = self.windowed_dataset
             self.features_w = self.ml_dataset_w.drop(target_name, axis=1)
-            self.target_w = self.ml_dataset_w[target_name]
+            if window_transformation == True:
+                self.target_w = self.ml_dataset_w[target_name].round()
+            else:
+                self.target_w = self.ml_dataset_w[target_name]
             self.target_ohe_w = self.one_hot_encoding(
-                self.ml_dataset_w, target=target_name, verbose=verbose
+                self.target_w, target=target_name, verbose=verbose
             )
             self.preprocessed_dataset_w = self.ml_dataset_w.copy(deep=True)
             for i in self.target_ohe_w.columns:
@@ -121,21 +128,24 @@ class DataPreprocessor:
             self.dl_dataset_w = self.preprocessed_dataset_w
         if save_dataset == True:
             PATH = "preprocessed_dataset"
-            save_csv(self.ml_dataset, PATH, f"ml_{saved_tag}", verbose=verbose)
-            save_csv(self.dl_dataset, PATH, f"dl_{saved_tag}", verbose=verbose)
+            save_csv(self.ml_dataset, PATH, f"ml_{save_tag}", verbose=verbose)
+            save_csv(self.dl_dataset, PATH, f"dl_{save_tag}", verbose=verbose)
             if window_size > 0:
                 save_csv(
                     self.ml_dataset_w,
                     PATH,
-                    f"ml_{saved_tag}_w({window_size})_s({step})",
+                    f"ml_{save_tag}_w({window_size})_s({step})",
                     verbose=verbose,
                 )
                 save_csv(
                     self.dl_dataset_w,
                     PATH,
-                    f"dl_{saved_tag}_w({window_size})_s({step})",
+                    f"dl_{save_tag}_w({window_size})_s({step})",
                     verbose=verbose,
                 )
+        self.preprocessing_time = f"{(time.perf_counter() - start_time):.2f} (s)"
+        exec_time = self.preprocessing_time.replace("(", "").replace(")", "")
+        self.preprocessing_info = self.scaler_name + f"({exec_time})"
 
     @staticmethod
     def uahdataset_loading(path="", specific=None, verbose=1):
@@ -275,9 +285,13 @@ class DataPreprocessor:
 
     @staticmethod
     def window_stepping(
-        data=[], window_size=0, step=0, average_window=False, verbose=1
+        data=[],
+        window_size=0,
+        step=0,
+        window_transformation=False,
+        transformation_fn=lambda x: sum(x) / len(x),
+        verbose=1,
     ):
-        segment = []
         final_data = pd.DataFrame()
         if len(data) != 0:
             if window_size == 0:
@@ -286,21 +300,18 @@ class DataPreprocessor:
                     print("\nATTENTION: Entry data returned without window stepping")
                 return final_data
             else:
-                if average_window is True:
-                    if verbose == 1:
-                        print("\nAverage window applied")
-                    for i in range(0, len(data) - 1, step):
-                        segment = data[i : i + window_size]
-                        row = segment.mean()
-                        final_data = final_data.append(row, ignore_index=True)
-                else:
-                    for i in range(0, len(data) - 1, step):
-                        window = data[i : i + window_size]
-                        final_data = final_data.append(window, ignore_index=True)
-                    if verbose == 1:
+                if verbose == 1:
+                    if window_transformation is True:
+                        print("\n\033[1mWindow transformation applied\033[0m")
+                    else:
                         print(
                             f"\nwindow stepping applied with window size: {window_size} and step : {step}"
                         )
+                for i in range(0, len(data) - 1, step):
+                    window_segment = data[i : i + window_size]
+                    if window_transformation is True:
+                        window_segment = window_segment.apply(transformation_fn, axis=0)
+                    final_data = final_data.append(window_segment, ignore_index=True)
         else:
             final_data = []
             print("ERROR: Empty data entry")
@@ -314,8 +325,10 @@ if __name__ == "__main__":
         scaler=2,
         window_size=60,
         step=10,
+        window_transformation=True,
+        window_transformation_function=lambda x: sum(x) / len(x),
+        save_dataset=False,
         verbose=1,
-        save_dataset=True,
     )
     print(f"\nthe raw dataset is: \n{preprocessor.raw_dataset}")
     print(f"\nthe dataset(after dropping columns) is\n{preprocessor.filtered_dataset}")
@@ -335,3 +348,5 @@ if __name__ == "__main__":
     print(
         f"\nthe full windowed preprocessed dataset is: \n{preprocessor.preprocessed_dataset_w}"
     )
+    print(f"\nthe preprocessing time is : {preprocessor.preprocessing_time}")
+    print(f"\npreprocessing info : {preprocessor.preprocessing_info}")
