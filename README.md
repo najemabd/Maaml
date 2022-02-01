@@ -14,4 +14,4 @@ The project is still in it's Alpha phase and looking for expanding the project a
 For more information, discussions and possible collaborations please contact :
 - email: najemabdennour@gmail.com  
 - linkedin: https://www.linkedin.com/in/najemeddine-abdennour/
-S#####          by Najemeddine Abdennour
+#####          by Najemeddine Abdennour

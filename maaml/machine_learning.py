@@ -38,10 +38,12 @@ class Evaluator:
         preprocessing_alias=None,
         verbose=0,
     ):
-        save_tag = "" if save_tag is None or save_tag == "" else f"_{save_tag}"
-        PATH = f"ML_EVALUATION{save_tag}"
+        self.save_tag = "" if save_tag is None or save_tag == "" else f"_{save_tag}"
+        PATH = f"ML_EVALUATION{self.save_tag}"
         if preprocessing_alias is not None:
-            save_tag = f"_{preprocessing_alias}" + save_tag
+            self.save_tag = f"_{preprocessing_alias}" + self.save_tag
+        else:
+            preprocessing_alias = ""
         self.model = i = 1
         self.evaluation = {}
         while True:
@@ -55,7 +57,7 @@ class Evaluator:
                     print("full evaluation complete")
                     self.evaluation = dict_transpose(self.evaluation)
                     if save_eval is True:
-                        self.tag = f"full_evaluation{save_tag}"
+                        self.tag = f"full_evaluation{self.save_tag}"
                         save_csv(self.evaluation, PATH, self.tag, verbose)
                     break
 
@@ -82,7 +84,7 @@ class Evaluator:
             if full_eval is False:
                 self.evaluation = dict_transpose(self.evaluation)
                 if save_eval is True:
-                    self.tag = f"{self.model_name}{save_tag}_evaluation"
+                    self.tag = f"{self.model_name}{self.save_tag}_evaluation"
                     save_csv(self.evaluation, PATH, self.tag, verbose)
 
             try:
@@ -219,8 +221,7 @@ class Evaluator:
             roc_auc_scores.append(roc_auc_score(y_testb, pred_reshaped))
         end_time = time.perf_counter()
         cv_scores["MLclassifier"].append(self.model_name)
-        if preprocessing_alias is not None:
-            cv_scores["preprocessing"].append(preprocessing_alias)
+        cv_scores["preprocessing"].append(preprocessing_alias)
         cv_scores["execution time"].append(
             f"{((end_time-start_time) / nb_splits): .2f} (s)"
         )
