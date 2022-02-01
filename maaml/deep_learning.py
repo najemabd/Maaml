@@ -132,7 +132,9 @@ class Evaluator:
         verbose=1,
     ):
         self.save_tag = "" if save_tag is None or save_tag == "" else f"_{save_tag}"
-        if preprocessing_alias is None:
+        if preprocessing_alias is not None:
+            self.save_tag = f"_{preprocessing_alias}" + self.save_tag
+        else:
             preprocessing_alias = ""
         self.model_name = model_name if model_name is not None else model.name
         target_name = [target_name]

@@ -28,7 +28,7 @@ def save_csv(df, path, name, verbose=0, prompt=None):
     if verbose == 1:
         if prompt is None:
             print(
-                f"\n\033[1mThe file {name}.csv was saved in the path :\n{os.getcwd()}/{path} \033[0m\n"
+                f"\n\033[1mThe file {name} was saved in the path :\n{os.getcwd()}/{path} \033[0m\n"
             )
         else:
             print(prompt)
@@ -59,7 +59,7 @@ def save_parquet(df, path, name, verbose=0, prompt=None):
     if verbose == 1:
         if prompt is None:
             print(
-                f"\n\033[1mThe file {name}.parquet was saved in the path :\n{os.getcwd()}/{path} \033[0m\n"
+                f"\n\033[1mThe file {name} was saved in the path :\n{os.getcwd()}/{path} \033[0m\n"
             )
         else:
             print(prompt)
@@ -70,7 +70,7 @@ def read_csv(path, delimiter=" ", header=None, verbose=0, prompt=None):
     if verbose == 1:
         if prompt is None:
             print(
-                f"\n\033[1mLoading dataframe from csv file from:\n{os.getcwd()}/{path} \033[0m\n"
+                f"\n\033[1mLoading dataframe from csv file in:\n{os.getcwd()}/{path} \033[0m\n"
             )
         else:
             print(prompt)
@@ -82,7 +82,7 @@ def read_parquet(path, verbose=0, prompt=None):
     if verbose == 1:
         if prompt is None:
             print(
-                f"\n\033[1mLoading dataframe from parquet file from:\n{os.getcwd()}/{path} \033[0m\n"
+                f"\n\033[1mLoading dataframe from parquet file in:\n{os.getcwd()}/{path} \033[0m\n"
             )
         else:
             print(prompt)
