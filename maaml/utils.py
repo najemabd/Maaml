@@ -9,12 +9,12 @@ def save_csv(df, path, name, verbose=0, prompt=None):
     DataFrame before saving it
 
     Args:
-        df (pandas.DataFrame or array or numpy.array): A pandas.DataFrame or an array or a numpy.array
-        path (str): A string of the path where the file is going to bes saved
-        name (str): A string of the name of the saved file with or without the .csv extention
-        verbose (int, optional): An integer of the verbosity of the function can be 0 or 1. Defaults to 0.
-        prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default
-            generated prompt in case of verbosity set to 1. Defaults to None.
+        * df (pandas.DataFrame or array or numpy.array): A pandas.DataFrame or an array or a numpy.array
+        * path (str): A string of the path where the file is going to be saved
+        * name (str): A string of the name of the saved file with or without the .csv extention
+        * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
+        * prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default
+            generated prompt in case of verbosity set to ``1``. Defaults to ``None``.
     """
     if not isinstance(df, pd.DataFrame):
         df = pd.DataFrame(df)
@@ -40,12 +40,12 @@ def save_parquet(df, path, name, verbose=0, prompt=None):
     DataFrame before saving it
 
     Args:
-        df (pandas.DataFrame or array or numpy.array): A pandas.DataFrame or an array or a numpy.array
-        path (str): A string of the path where the file is going to bes saved
-        name (str): A string of the name of the saved file with or without the .parquet extention
-        verbose (int, optional): An integer of the verbosity of the function can be 0 or 1. Defaults to 0.
-        prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default
-            generated prompt in case of verbosity set to 1. Defaults to None.
+        * df (pandas.DataFrame or array or numpy.array): A pandas.DataFrame or an array or a numpy.array
+        * path (str): A string of the path where the file is going to be saved
+        * name (str): A string of the name of the saved file with or without the .parquet extention
+        * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
+        * prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default
+            generated prompt in case of verbosity set to ``1``. Defaults to ``None``.
     """
     if not isinstance(df, pd.DataFrame):
         df = pd.DataFrame(df)
@@ -66,6 +66,18 @@ def save_parquet(df, path, name, verbose=0, prompt=None):
 
 
 def read_csv(path, delimiter=" ", header=None, verbose=0, prompt=None):
+    """A function to read a csv file and return a pandas dataframe.
+
+    Args:
+        * path (str): A string of the path where the file is going to be saved
+        * delimiter (str, optional): A string for the type of separation used in the csv file. Defaults to ``" "``.
+        * header (int, optional): The specification of the technique used to define the columns names: ``None`` in case of no columns names in the file, ``0`` in case that first row is the header. Defaults to ``None``.
+        * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
+        * prompt (str, optional): A message in the case of verbose is ``1``, if not specified another default message will be displayed. Defaults to ``None``.
+
+    Returns:
+        * pandas.DataFrame: A pandas dataframe of the read file.
+    """
     df_csv = pd.read_table(path, header=header, delimiter=delimiter)
     if verbose == 1:
         if prompt is None:
@@ -78,6 +90,17 @@ def read_csv(path, delimiter=" ", header=None, verbose=0, prompt=None):
 
 
 def read_parquet(path, verbose=0, prompt=None):
+    """A function to read a parquet file and return a pandas dataframe.
+
+    Args:
+        * path (str): A string of the path where the file is going to be saved
+        * delimiter (str, optional): A string for the type of separation used in the parquet file. Defaults to ``" "``.
+        * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
+        * prompt (str, optional): A message in the case of verbose is ``1``, if not specified another default message will be displayed. Defaults to ``None``.
+
+    Returns:
+        * pandas.DataFrame: A pandas dataframe of the read file.
+    """
     df_parquet = pd.read_parquet(path)
     if verbose == 1:
         if prompt is None:
@@ -90,30 +113,31 @@ def read_parquet(path, verbose=0, prompt=None):
 
 
 def dict_transpose(dictionary):
-    """A fucntion that transposes a dictionary,
-    it simply uses the first key and it's values as the new keys and then
-     maps the rest of the keys and their values to the newly created keys in the same order of apperance
-        Args:
-            dictionary (dict): A python dictionary
+    """A function that transposes a dictionary,
+    it simply uses the first key and it's values as the new keys and then maps the rest of the keys and their values to the newly created keys in the same order of apperance.
 
-        Returns:
-            dict: A transposed python dictionary
-        Exemple:
-            >>> d = {
-                "classifier": ["SVM","LR","MLP"],
-                "scaler": ["Standard", "Standard", "Standard"],
-                "exec time": ["75.88(s)", "4.78(s)", "94.89(s)"],
-                "accuracy": ["78.5%","53.6%","88.6%"],
-                "F1": ["78.6%","53.0%","88.6%"],
-                }
-            >>> d_transposed = dict_transpose(d)
-            >>> d_transposed
-                {
-                "classifier": ["scaler","exec time","accuracy","F1"],
-                "SVM": ["Standard","75.88(s)","78.5%","78.6%"],
-                "LR": ["Standard","4.78(s)","53.6%","53.0%"],
-                "MLP": ["Standard","94.89(s)","88.6%","88.6%"],
-                }
+    Args:
+        * dictionary (dict): A python dictionary
+
+    Returns:
+        * dict: A transposed python dictionary
+
+    Exemple:
+        >>> d = {
+            "classifier": ["SVM","LR","MLP"],
+            "scaler": ["Standard", "Standard", "Standard"],
+            "exec time": ["75.88(s)", "4.78(s)", "94.89(s)"],
+            "accuracy": ["78.5%","53.6%","88.6%"],
+            "F1": ["78.6%","53.0%","88.6%"],
+            }
+        >>> d_transposed = dict_transpose(d)
+        >>> d_transposed
+            {
+            "classifier": ["scaler","exec time","accuracy","F1"],
+            "SVM": ["Standard","75.88(s)","78.5%","78.6%"],
+            "LR": ["Standard","4.78(s)","53.6%","53.0%"],
+            "MLP": ["Standard","94.89(s)","88.6%","88.6%"],
+            }
     """
     keys_list = list(dictionary)
     values_list = list(dictionary.values())
@@ -128,7 +152,27 @@ def dict_transpose(dictionary):
 
 
 class FileScraper:
+    """A class for file scraping from a specific directory. includes ``path_list`` attribute representing the paths of the searched files in a list of strings format.
+    ``found_files_count`` attribute represnting the number of files found.
+    `all_files` attribute represnting the paths of all existing files in a list of strings format available in the given path directory.
+    ``all_files_count`` attribute representing the number of all existing files available in the given path directory.
+    `time` attribute representing the execution time of the search.
+
+
+    Args:
+        * path (str): The path to the search directory.
+        * search_list (list): List of strings representing the searched files.
+        * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
+    """
+
     def __init__(self, path, search_list, verbose=0) -> None:
+        """The constructor of the FileScraper class.
+
+        Args:
+            * path (str): The path to the search directory.
+            * search_list (list): List of strings representing the searched files.
+            * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``0``.
+        """
         start_time = time.perf_counter()
         self.parent_path = path
         self.search_list = search_list
@@ -148,9 +192,23 @@ class FileScraper:
             print("*******All search_list elements were found successfully*******\n")
 
     def __call__(self):
+        """A method for the class instance call
+
+        Returns:
+            * list: list of strings representing the paths of the searched files.
+        """
         return self.path_list
 
-    def file_scraping(self, path, search_list, verbose=0):
+    def file_scraping(self, path, verbose=0):
+        """A class method that searches
+
+        Args:
+            * path (str): The path to the search directory.
+            * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
+
+        Returns:
+            list: list of strings representing the paths of the searched files.
+        """
         files = []
         for text in os.listdir(path):
             if os.path.isdir(os.path.join(path, text)):
