@@ -382,7 +382,14 @@ class PathBuilder:
 
 
 class DataReader:
-    def __init__(self, path, dataset_name=None, from_string=True,header=None delimiter=" "):
+    def __init__(
+        self,
+        path,
+        dataset_name=None,
+        from_string=True,
+        header=None,
+        delimiter=" ",
+    ):
         self.path = path
         if from_string is True:
             if dataset_name == "UAHdataset":

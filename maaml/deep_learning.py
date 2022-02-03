@@ -29,13 +29,21 @@ from maaml.utils import save_csv
 
 
 class DeepRCNModel:
-    """[summary]
-    a class for the DeepRCNModel, that allow you to
-    access the layers as attributes by the ordinal numbers names from first_layer .. to the eighteenth_layer,
-     except for the attributes of the resnet_block that has it's unique method and the input_layer and output_layer attributes
+    """A class for the DeepRCNModel model, that allow you to access the layers as attributes by the ordinal numbers names from first_layer .. to the eighteenth_layer, except for the attributes of the resnet_block that has it's unique method and the input_layer and output_layer attributes.
+    Includes a static method attribute that can be independently accessed to create the built-in resnet block function.
+
+    Args:
+        * input_shape (tuple, optional): The input shape of the model. Defaults to `(20, 1, 1)`.
+        * class_nb (int, optional): The number of targets in the outputs . Defaults to `3`.
     """
 
     def __init__(self, input_shape=(20, 1, 1), class_nb=3):
+        """The constructor of the DeepRCNModel Class
+
+        Args:
+            * input_shape (tuple, optional): The input shape of the model. Defaults to `(20, 1, 1)`.
+            * class_nb (int, optional): The number of targets in the outputs . Defaults to `3`.
+        """
         self.input_shape = input_shape
         self.input_layer = Input(shape=self.input_shape, name="input")
         self.first_layer = Conv2D(
@@ -88,25 +96,62 @@ class DeepRCNModel:
         return self.model
 
     @staticmethod
-    def resnet_block_creating(input_data, filters, conv_size):
+    def resnet_block_creating(input_layer, filters, conv_size):
+        """A static method to create an internal resnet block that links with the global model layers.
+
+        Args:
+            * input_layer (tensorflow or keras class): A model layer that the resnet block is going to link to.
+            * filters (int): The number of filters in the Conv2D internal layers.
+            * conv_size (int): The convolution size of the Conv2D internal layers.
+
+        Returns:
+            * A tensorflow or keras class: A layer that links to a block of layers.
+        """
         x = Conv2D(
             filters, conv_size, activation="relu", padding="same", name="resnet_block1"
-        )(input_data)
+        )(input_layer)
         x = BatchNormalization(name="resnet_block2")(x)
         x = Conv2D(
             filters, conv_size, activation=None, padding="same", name="resnet_block3"
         )(x)
         x = BatchNormalization(name="resnet_block4")(x)
         x = Dropout(0.2)(x)
-        x = Add(name="resnet")([x, input_data])
+        x = Add(name="resnet")([x, input_layer])
         x = Activation("relu", name="resnet_activation")(x)
         return x
 
     def show(self):
+        """A method to display the model's summary."""
         self.model.summary()
 
 
 class Evaluator:
+    """A class to evaluate a tensorflow or a keras deep learning model and saves the trained model and the results in the working directory.
+
+    Args:
+        * model (tensorflow or a keras class): A model to evaluate
+        * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target. Defaults to `None`.
+        * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in the case that the dataset parameter is not provided. Defaults to `None`.
+        * target_column (pandas.Series or array or numpy.array, optional): The classfication target in one column in the case that the dataset parameter is not provided . Defaults to `None`.
+        * target (pandas.DataFrame or array or numpy.array, optional): The classfication target in one hot encoded format in the case that the dataset parameter is not provided. Defaults to `None`.
+        * target_name (str, optional): The name of the classification target as a string. Defaults to `"target"`.
+        * model_name (str, optional): The name of the model as string that is going to be displayed in the cross validation results. Defaults to `None`.
+        * input_shape (tuple): The input shape of the model as a tuple. Defaults to `None`.
+        * preprocessing_alias (str, optional): The name for the applied dataset preprocessing as a string that is going to be displayed in the cross validation results. Defaults to `None`.
+        * cross_eval (bool, optional): A full cross validation evaluation in the case of `True` or a training session evaluation in the case of `False`. Defaults to `True`.
+        * save_tag (str, optional): The tag given to the created directory and the saved evaluation result, important in case of mutiple evaluation in the same directory to not overwite exiting results. Defaults to `None`.
+        * nb_splits (int, optional): The number of splits in case of cross validation. Defaults to `5`.
+        * test_size (float, optional): The percentage of the test sample size as a float from the full dataset represented as `1` . Defaults to `0.3`.
+        * callbacks (str, optional): The training model callback specification that saves the training model if not specified as `"best model"`, the trained model will not be saved. Defaults to `"best model"`.
+        * learning_rate_scheduler (str, optional): If defined as `"scheduler"` uses the internal `learning_rate_sheduling` method to define and change the learning rate. Defaults to `"scheduler"`.
+        * opt (str or a tensorflow or keras class, optional): The optimizer used in the evaluation. Defaults to `"adam"`. exemple: if defined as `"adam"` uses the standard Adam optimizer class available in keras with it's standard learning rate of `0.001`.
+        * loss (str or a tensorflow or keras class, optional): The loss function used in the evaluation. Defaults to `"categorical_crossentropy"`. exemple if defined as `"categorical_crossentropy"` uses the standard categorical crossentropy loss class available in keras.
+        * metrics (list, optional): The metric used in the training can be a list of string or list of tensorflow or keras classes, this parameter is only used in the training and does not reflect the evaluation metrics in the results that includes various other metrics for the results. Defaults to `["accuracy"]`.
+        * epochs (int, optional): The number of epochs for the training. Defaults to `600`.
+        * batch_size (int, optional): The size of the batch in the training. Defaults to `60`.
+        * verbose (int, optional): An integer of the verbosity of the evaluation can be ``0`` or ``1``. Defaults to ``0``.
+    """
+
     def __init__(
         self,
         model,
@@ -123,7 +168,7 @@ class Evaluator:
         nb_splits=5,
         test_size=0.3,
         callbacks="best model",
-        learning_rate="scheduler",
+        learning_rate_scheduler="scheduler",
         opt="adam",
         loss="categorical_crossentropy",
         metrics=["accuracy"],
@@ -131,6 +176,31 @@ class Evaluator:
         batch_size=60,
         verbose=1,
     ):
+        """The constructor of the evaluation class.
+
+        Args:
+            * model (tensorflow or a keras class): A model to evaluate
+            * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target. Defaults to `None`.
+            * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in the case that the dataset parameter is not provided. Defaults to `None`.
+            * target_column (pandas.Series or array or numpy.array, optional): The classfication target in one column in the case that the dataset parameter is not provided . Defaults to `None`.
+            * target (pandas.DataFrame or array or numpy.array, optional): The classfication target in one hot encoded format in the case that the dataset parameter is not provided. Defaults to `None`.
+            * target_name (str, optional): The name of the classification target as a string. Defaults to `"target"`.
+            * model_name (str, optional): The name of the model as string that is going to be displayed in the cross validation results. Defaults to `None`.
+            * input_shape (tuple): The input shape of the model as a tuple. Defaults to `None`.
+            * preprocessing_alias (str, optional): The name for the applied dataset preprocessing as a string that is going to be displayed in the cross validation results. Defaults to `None`.
+            * cross_eval (bool, optional): A full cross validation evaluation in the case of `True` or a training session evaluation in the case of `False`. Defaults to `True`.
+            * save_tag (str, optional): The tag given to the created directory and the saved evaluation result, important in case of mutiple evaluation in the same directory to not overwite exiting results. Defaults to `None`.
+            * nb_splits (int, optional): The number of splits in case of cross validation. Defaults to `5`.
+            * test_size (float, optional): The percentage of the test sample size as a float from the full dataset represented as `1` . Defaults to `0.3`.
+            * callbacks (str, optional): The training model callback specification that saves the training model if not specified as `"best model"`, the trained model will not be saved. Defaults to `"best model"`.
+            * learning_rate_scheduler (str, optional): If defined as `"scheduler"` uses the internal `learning_rate_sheduling` method to define and change the learning rate. Defaults to `"scheduler"`.
+            * opt (str or a tensorflow or keras class, optional): The optimizer used in the evaluation. Defaults to `"adam"`. exemple: if defined as `"adam"` uses the standard Adam optimizer class available in keras with it's standard learning rate of `0.001`.
+            * loss (str or a tensorflow or keras class, optional): The loss function used in the evaluation. Defaults to `"categorical_crossentropy"`. exemple if defined as `"categorical_crossentropy"` uses the standard categorical crossentropy loss class available in keras.
+            * metrics (list, optional): The metric used in the training can be a list of string or list of tensorflow or keras classes, this parameter is only used in the training and does not reflect the evaluation metrics in the results that includes various other metrics for the results. Defaults to `["accuracy"]`.
+            * epochs (int, optional): The number of epochs for the training. Defaults to `600`.
+            * batch_size (int, optional): The size of the batch in the training. Defaults to `60`.
+            * verbose (int, optional): An integer of the verbosity of the evaluation can be ``0`` or ``1``. Defaults to ``0``.
+        """
         self.save_tag = "" if save_tag is None or save_tag == "" else f"_{save_tag}"
         if preprocessing_alias is not None:
             self.save_tag = f"_{preprocessing_alias}" + self.save_tag
@@ -157,7 +227,7 @@ class Evaluator:
                 input_shape=input_shape,
                 save_tag=self.save_tag,
                 callbacks=callbacks,
-                learning_rate=learning_rate,
+                learning_rate_scheduler=learning_rate_scheduler,
                 nb_splits=nb_splits,
                 test_size=test_size,
                 opt=opt,
@@ -184,7 +254,7 @@ class Evaluator:
                 input_shape=input_shape,
                 save_tag=self.save_tag,
                 callbacks=callbacks,
-                learning_rate=learning_rate,
+                learning_rate_scheduler=learning_rate_scheduler,
                 test_size=test_size,
                 opt=opt,
                 loss=loss,
@@ -205,7 +275,7 @@ class Evaluator:
         input_shape,
         save_tag="",
         callbacks="best model",
-        learning_rate="scheduler",
+        learning_rate_scheduler="scheduler",
         test_size=0.3,
         opt="adam",
         loss="categorical_crossentropy",
@@ -214,6 +284,35 @@ class Evaluator:
         batch_size=60,
         verbose=1,
     ):
+        """A method for training a tensorflow or a keras deep learning model and saves the trained model and the results in the working directory.
+
+        Args:
+            * model (tensorflow or a keras class): A model to evaluate
+            * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target. Defaults to `None`.
+            * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in the case that the dataset parameter is not provided. Defaults to `None`.
+            * target_column (pandas.Series or array or numpy.array, optional): The classfication target in one column in the case that the dataset parameter is not provided . Defaults to `None`.
+            * target (pandas.DataFrame or array or numpy.array, optional): The classfication target in one hot encoded format in the case that the dataset parameter is not provided. Defaults to `None`.
+            * target_name (str, optional): The name of the classification target as a string. Defaults to `"target"`.
+            * model_name (str, optional): The name of the model as string that is going to be displayed in the training results. Defaults to `None`.
+            * input_shape (tuple): The input shape of the model as a tuple. Defaults to `None`.
+            * save_tag (str, optional): The tag given to the created directory and the saved evaluation result, important in case of mutiple evaluation in the same directory to not overwite exiting results. Defaults to `None`.
+            * callbacks (str, optional): The training model callback specification that saves the training model if not specified as `"best model"`, the trained model will not be saved. Defaults to `"best model"`.
+            * learning_rate_scheduler (str, optional): If defined as `"scheduler"` uses the internal `learning_rate_sheduling` method to define and change the learning rate. Defaults to `"scheduler"`.
+            * test_size (float, optional): The percentage of the test sample size as a float from the full dataset represented as `1` . Defaults to `0.3`.
+            * opt (str or a tensorflow or keras class, optional): The optimizer used in the evaluation. Defaults to `"adam"`. exemple: if defined as `"adam"` uses the standard Adam optimizer class available in keras with it's standard learning rate of `0.001`.
+            * loss (str or a tensorflow or keras class, optional): The loss function used in the evaluation. Defaults to `"categorical_crossentropy"`. exemple if defined as `"categorical_crossentropy"` uses the standard categorical crossentropy loss class available in keras.
+            * metrics (list, optional): The metric used in the training can be a list of string or list of tensorflow or keras classes, this parameter is only used in the training and does not reflect the evaluation metrics in the results that includes various other metrics for the results. Defaults to `["accuracy"]`.
+            * epochs (int, optional): The number of epochs for the training. Defaults to `600`.
+            * batch_size (int, optional): The size of the batch in the training. Defaults to `60`.
+            * verbose (int, optional): An integer of the verbosity of the evaluation can be ``0`` or ``1``. Defaults to ``0``.
+
+        Returns:
+            * tuple: (`model`, `best_model`, `training_history`, `scores`)
+                * tensorflow or keras class: `model` the model after training as the first value.
+                * tensorflow or keras class: `best_model` the best performing the model as the second value.
+                * dict: `training_history` the training history as the third value.
+                * list: `scores` the result model evaluation scores as the fourth value.
+        """
         start_time = time.perf_counter()
         if dataset is not None:
             X = dataset.drop(target_names, axis=1)
@@ -232,7 +331,7 @@ class Evaluator:
                 filepath, monitor="val_accuracy", save_best_only=True, verbose=1
             )
             cb = [mc]
-            if learning_rate == "scheduler":
+            if learning_rate_scheduler == "scheduler":
                 lrs = LearningRateScheduler(self.learning_rate_sheduling)
                 cb.append(lrs)
         elif callbacks == None:
@@ -302,7 +401,7 @@ class Evaluator:
         preprocessing_alias="",
         save_tag="",
         callbacks="best model",
-        learning_rate="scheduler",
+        learning_rate_scheduler="scheduler",
         nb_splits=5,
         test_size=0.3,
         opt="adam",
@@ -312,6 +411,33 @@ class Evaluator:
         batch_size=60,
         verbose=0,
     ):
+        """[summary]
+
+        Args:
+            * model (tensorflow or a keras class): A model to evaluate
+            * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target. Defaults to `None`.
+            * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in the case that the dataset parameter is not provided. Defaults to `None`.
+            * target_column (pandas.Series or array or numpy.array, optional): The classfication target in one column in the case that the dataset parameter is not provided . Defaults to `None`.
+            * target (pandas.DataFrame or array or numpy.array, optional): The classfication target in one hot encoded format in the case that the dataset parameter is not provided. Defaults to `None`.
+            * target_name (str, optional): The name of the classification target as a string. Defaults to `"target"`.
+            * model_name (str, optional): The name of the model as string that is going to be displayed in the cross validation results. Defaults to `None`.
+            * input_shape (tuple): The input shape of the model as a tuple. Defaults to `None`.
+            * preprocessing_alias (str, optional): The name for the applied dataset preprocessing as a string that is going to be displayed in the cross validation results. Defaults to `None`.
+            * save_tag (str, optional): The tag given to the created directory and the saved evaluation result, important in case of mutiple evaluation in the same directory to not overwite exiting results. Defaults to `None`.
+            * callbacks (str, optional): The training model callback specification that saves the training model if not specified as `"best model"`, the trained model will not be saved. Defaults to `"best model"`.
+            * learning_rate_scheduler (str, optional): If defined as `"scheduler"` uses the internal `learning_rate_sheduling` method to define and change the learning rate. Defaults to `"scheduler"`.
+            * nb_splits (int, optional): The number of splits in case of cross validation. Defaults to `5`.
+            * test_size (float, optional): The percentage of the test sample size as a float from the full dataset represented as `1` . Defaults to `0.3`.
+            * opt (str or a tensorflow or keras class, optional): The optimizer used in the evaluation. Defaults to `"adam"`. exemple: if defined as `"adam"` uses the standard Adam optimizer class available in keras with it's standard learning rate of `0.001`.
+            * loss (str or a tensorflow or keras class, optional): The loss function used in the evaluation. Defaults to `"categorical_crossentropy"`. exemple if defined as `"categorical_crossentropy"` uses the standard categorical crossentropy loss class available in keras.
+            * metrics (list, optional): The metric used in the training can be a list of string or list of tensorflow or keras classes, this parameter is only used in the training and does not reflect the evaluation metrics in the results that includes various other metrics for the results. Defaults to `["accuracy"]`.
+            * epochs (int, optional): The number of epochs for the training. Defaults to `600`.
+            * batch_size (int, optional): The size of the batch in the training. Defaults to `60`.
+            * verbose (int, optional): An integer of the verbosity of the evaluation can be ``0`` or ``1``. Defaults to ``0``.
+
+        Returns:
+            * list: `cv_scores` the result cross validation evaluation scores.
+        """
         start_time = time.perf_counter()
         if dataset is not None:
             X = dataset.drop(target_names, axis=1)
@@ -347,7 +473,7 @@ class Evaluator:
                     filepath, monitor="val_accuracy", save_best_only=True, verbose=1
                 )
                 cb = [mc]
-                if learning_rate == "scheduler":
+                if learning_rate_scheduler == "scheduler":
                     lrs = LearningRateScheduler(self.learning_rate_sheduling)
                     cb.append(lrs)
             elif callbacks == None:
@@ -428,7 +554,19 @@ class Evaluator:
     @staticmethod
     def learning_rate_sheduling(
         epoch, lrate, initial_lrate=0.001, second_lrate=0.0001, scheduler_threshold=480
-    ):
+    ) -> float:
+        """A static method to customize a learning rate sheduling.
+
+        Args:
+            * epoch (int): The current epoch count in the training process.
+            * lrate (float):The current learning rate in the training process.
+            * initial_lrate (float, optional): The chosen initial learning rate to be set for the training. Defaults to `0.001`.
+            * second_lrate (float, optional): The chosen learning rate to change the training to when the threshold is reached. Defaults to `0.0001`.
+            * scheduler_threshold (int, optional): The epoch value that defines when the change in the learning rate will occur. Defaults to `480`.
+
+        Returns:
+            * float: The actual learning rate that is going to be used in the training process.
+        """
         lrate = initial_lrate
         if epoch > scheduler_threshold:
             lrate = second_lrate
@@ -436,9 +574,17 @@ class Evaluator:
         return lrate
 
     @staticmethod
-    def plot_learning_rate(
+    def training_history_ploting(
         training_history, save=False, metric="accuracy", style="default"
     ):
+        """A static method for ploting the history of a training session
+
+        Args:
+            * training_history (pandas.DataFrame): A training history of a tensorflow or keras class model training session in the form of pandas dataframe.
+            * save (bool, optional): saves the plot in the current working directory in the case of `True`, and does not save the plot in the case of `False`. Defaults to `False`.
+            * metric (str, optional): the metric that we want to display available in the training history dataframe columns such as `"accuracy"` or `"loss"`. Defaults to `"accuracy"`.
+            * style (str, optional): The style of the displayed plot, can be a name from the stanadard matplotlib library styles such as `"seaborn-poster"` or an integer from `"0"` to `"23"` passed as a string . Defaults to "default".
+        """
         styles = [
             "seaborn-poster",
             "seaborn-bright",
