@@ -130,8 +130,8 @@ class Evaluator:
 
     Args:
         * model (tensorflow or a keras class): A model to evaluate
-        * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target. Defaults to `None`.
-        * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in the case that the dataset parameter is not provided. Defaults to `None`.
+        * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target in one column and the target in one hot encoded format. Defaults to `None`.
+        * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in columns for the case that the dataset parameter is not provided. Defaults to `None`.
         * target_column (pandas.Series or array or numpy.array, optional): The classfication target in one column in the case that the dataset parameter is not provided . Defaults to `None`.
         * target (pandas.DataFrame or array or numpy.array, optional): The classfication target in one hot encoded format in the case that the dataset parameter is not provided. Defaults to `None`.
         * target_name (str, optional): The name of the classification target as a string. Defaults to `"target"`.
@@ -176,12 +176,12 @@ class Evaluator:
         batch_size=60,
         verbose=1,
     ):
-        """The constructor of the evaluation class.
+        """The constructor of the Evaluator class.
 
         Args:
             * model (tensorflow or a keras class): A model to evaluate
-            * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target. Defaults to `None`.
-            * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in the case that the dataset parameter is not provided. Defaults to `None`.
+            * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target in one column and the target in one hot encoded format. Defaults to `None`.
+            * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in columns for the case that the dataset parameter is not provided. Defaults to `None`.
             * target_column (pandas.Series or array or numpy.array, optional): The classfication target in one column in the case that the dataset parameter is not provided . Defaults to `None`.
             * target (pandas.DataFrame or array or numpy.array, optional): The classfication target in one hot encoded format in the case that the dataset parameter is not provided. Defaults to `None`.
             * target_name (str, optional): The name of the classification target as a string. Defaults to `"target"`.
@@ -288,8 +288,8 @@ class Evaluator:
 
         Args:
             * model (tensorflow or a keras class): A model to evaluate
-            * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target. Defaults to `None`.
-            * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in the case that the dataset parameter is not provided. Defaults to `None`.
+            * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target in one column and the target in one hot encoded format. Defaults to `None`.
+            * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in columns for the case that the dataset parameter is not provided. Defaults to `None`.
             * target_column (pandas.Series or array or numpy.array, optional): The classfication target in one column in the case that the dataset parameter is not provided . Defaults to `None`.
             * target (pandas.DataFrame or array or numpy.array, optional): The classfication target in one hot encoded format in the case that the dataset parameter is not provided. Defaults to `None`.
             * target_name (str, optional): The name of the classification target as a string. Defaults to `"target"`.
@@ -411,12 +411,12 @@ class Evaluator:
         batch_size=60,
         verbose=0,
     ):
-        """[summary]
+        """A method for cross evaluating and training a tensorflow or a keras deep learning model and saves the trained models and the results in the working directory.
 
         Args:
             * model (tensorflow or a keras class): A model to evaluate
-            * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target. Defaults to `None`.
-            * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in the case that the dataset parameter is not provided. Defaults to `None`.
+            * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features and a classfication target in one column and the target in one hot encoded format. Defaults to `None`.
+            * features (pandas.DataFrame or array or numpy.array, optional): The features of the dataset in columns for the case that the dataset parameter is not provided. Defaults to `None`.
             * target_column (pandas.Series or array or numpy.array, optional): The classfication target in one column in the case that the dataset parameter is not provided . Defaults to `None`.
             * target (pandas.DataFrame or array or numpy.array, optional): The classfication target in one hot encoded format in the case that the dataset parameter is not provided. Defaults to `None`.
             * target_name (str, optional): The name of the classification target as a string. Defaults to `"target"`.
