@@ -69,7 +69,7 @@ class Evaluator:
             * nb_splits (int, optional): The number of splits in case of cross validation. Defaults to `5`.
             * test_size (float, optional): The percentage of the test sample size as a float from the full dataset represented as `1` . Defaults to `0.3`.
             * full_eval (bool, optional): A full evaluation with all the available models in the case of `True` or the model chosen in the `model_name` parameter in the case of `False`. Defaults to `False`.
-            * save_eval (bool, optional): saves the evaluation results in a new directory under the working directory in case of `True` and does not save the evaluation results in the case of `False`. Defaults to `False`.
+            * save_eval (bool, optional): saves the evaluation results in a newly created directory under the working directory in case of `True`. Defaults to `False`.
             * save_tag (str, optional): The tag given to the created directory and the saved evaluation result, important in case of mutiple evaluation in the same directory to not overwite exiting results. Defaults to `None`.
             * preprocessing_alias (str, optional): The name for the applied dataset preprocessing as a string that is going to be displayed in the evaluation results. Defaults to `None`.
             * verbose (int, optional): An integer of the verbosity of the evaluation can be ``0`` or ``1``. Defaults to ``0``.

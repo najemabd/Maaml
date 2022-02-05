@@ -69,7 +69,7 @@ def read_csv(path, delimiter=" ", header=None, verbose=0, prompt=None):
     """A function to read a csv file and return a pandas dataframe.
 
     Args:
-        * path (str): A string of the path where the file is going to be saved
+        * path (str): The data file name in the working directory or the data file path with the file name.
         * delimiter (str, optional): A string for the type of separation used in the csv file. Defaults to ``" "``.
         * header (int, optional): The specification of the technique used to define the columns names: ``None`` in case of no columns names in the file, ``0`` in case that first row is the header. Defaults to ``None``.
         * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
@@ -93,7 +93,7 @@ def read_parquet(path, verbose=0, prompt=None):
     """A function to read a parquet file and return a pandas dataframe.
 
     Args:
-        * path (str): A string of the path where the file is going to be saved
+        * path (str): The data file name in the working directory or the data file path with the file name.
         * delimiter (str, optional): A string for the type of separation used in the parquet file. Defaults to ``" "``.
         * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
         * prompt (str, optional): A message in the case of verbose is ``1``, if not specified another default message will be displayed. Defaults to ``None``.
@@ -122,7 +122,7 @@ def dict_transpose(dictionary):
     Returns:
         * dict: A transposed python dictionary
 
-    Exemple:
+    Example:
         >>> d = {
             "classifier": ["SVM","LR","MLP"],
             "scaler": ["Standard", "Standard", "Standard"],
