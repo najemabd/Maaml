@@ -30,7 +30,7 @@ from maaml.utils import save_csv
 
 class DeepRCNModel:
     """A class for the DeepRCNModel model, that allow you to access the layers as attributes by the ordinal numbers names from first_layer .. to the eighteenth_layer, except for the attributes of the resnet_block that has it's unique method and the input_layer and output_layer attributes.
-    Includes a static method attribute that can be independently accessed to create the built-in resnet block function.
+    Includes a static method attribute that can be independently accessed to create the built-in resnet block function, and a `__call__ ` method for calling an instance of the class to return the `fmodel` attribute.
 
     Args:
         * input_shape (tuple, optional): The input shape of the model. Defaults to `(20, 1, 1)`.
@@ -93,6 +93,11 @@ class DeepRCNModel:
         self.model = Model(self.input_layer, self.output_layer, name="DeepRCNModel")
 
     def __call__(self):
+        """A method for the class instance call
+
+        Returns:
+            * keras class: The keras model.
+        """
         return self.model
 
     @staticmethod

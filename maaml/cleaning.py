@@ -3,7 +3,7 @@ from maaml.utils import save_csv
 
 
 class DataReader:
-    """A class for reading data from a csv file. includes a `path` attribute and `data` attribute.
+    """A class for reading data from a csv file. includes a `path` attribute and `data` attribute and a `__call__ ` method for calling an instance of the class to return the `data` attribute.
 
     Args:
         * path (str): The data file name in the working directory or the data file path with the file name.
