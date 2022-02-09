@@ -157,6 +157,7 @@ class FileScraper:
     `all_files` attribute represnting the paths of all existing files in a list of strings format available in the given path directory.
     ``all_files_count`` attribute representing the number of all existing files available in the given path directory.
     `time` attribute representing the execution time of the search.
+    A `__call__ ` method for calling an instance of the class to return the `path_list` attribute.
 
 
     Args:
@@ -173,23 +174,24 @@ class FileScraper:
             * search_list (list): List of strings representing the searched files.
             * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``0``.
         """
+        self.verbose = verbose
         start_time = time.perf_counter()
         self.parent_path = path
-        self.search_list = search_list
+        self.search_list = set(search_list)
         self.searched_list = search_list.copy()
-        self.file_scraping(self.parent_path, self.search_list, verbose=verbose)
+        self.file_scraping(self.parent_path, self.search_list)
         self.found_files_count = len(self.path_list)
         self.all_files_count = len(self.all_files)
         end_time = time.perf_counter()
         self.time = f"{end_time-start_time} (s)"
         print(f"Finished searching in {self.time}")
         print(
-            f"Total of {self.found_files_count} found from total of {self.all_files_count} existant files"
+            f"{self.found_files_count} matching files found from total of {self.all_files_count} existant files"
         )
-        if self.searched_list != []:
+        if len(self.searched_list):
             print(f"These elements are not found: {self.searched_list}\n")
         else:
-            print("*******All search_list elements were found successfully*******\n")
+            print("*******All searched elements were found successfully*******\n")
 
     def __call__(self):
         """A method for the class instance call
@@ -199,12 +201,11 @@ class FileScraper:
         """
         return self.path_list
 
-    def file_scraping(self, path, verbose=0):
+    def file_scraping(self, path, search_list):
         """A class method that searches
 
         Args:
             * path (str): The path to the search directory.
-            * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
 
         Returns:
             list: list of strings representing the paths of the searched files.
@@ -212,16 +213,16 @@ class FileScraper:
         files = []
         for text in os.listdir(path):
             if os.path.isdir(os.path.join(path, text)):
-                if verbose == 2:
+                if self.verbose == 2:
                     print(f"Changing directory to subdirectory: '{text}'")
                 dir = os.path.join(path, text)
-                localfiles = self.file_scraping(dir, self.search_list, verbose=verbose)
-                if verbose == 2:
+                localfiles = self.file_scraping(dir, search_list)
+                if self.verbose == 2:
                     if localfiles != []:
                         print(f"'{text}' files :{localfiles}")
                 if localfiles == []:
                     localfiles, dir = files, path
-                    if verbose == 2:
+                    if self.verbose == 2:
                         if localfiles == []:
                             print(f"No files found in the '{text}' directory")
                         else:
@@ -234,21 +235,21 @@ class FileScraper:
                             self.all_files.append(file_path)
                     except AttributeError:
                         self.all_files = [file_path]
-                    for picked_file in self.search_list:
+                    for picked_file in search_list:
                         if file == picked_file:
                             if picked_file in self.searched_list:
                                 self.searched_list.remove(picked_file)
                             try:
                                 if file_path not in self.path_list:
                                     self.path_list.append(file_path)
-                                    if verbose == 1:
+                                    if self.verbose == 1:
                                         print(f"file '{file}' found in: \n{dir}")
                                         print(
                                             "**File path added to the path_list successfully**\n"
                                         )
                             except AttributeError:
                                 self.path_list = [file_path]
-                                if verbose == 1:
+                                if self.verbose == 1:
                                     print(f"file '{file}' found in: \n{dir}")
                                     print(
                                         "**Initalization of the path_list with the file path is successful**\n"
@@ -257,6 +258,33 @@ class FileScraper:
             elif os.path.isfile(os.path.join(path, text)):
                 files.append(text)
         return files
+
+
+def pattern_search(pattern, local_set, error_message, global_set=None):
+    """A function to collect phrases starting from a string pattern.
+
+    Args:
+        * pattern (str): A sylable or a part of a word that we want to find.
+        * local_set (set): a set or list of complete and correct words that the pattern could be in.
+        * error_message (str): a message to print with the ValueError raised in case pattern is not found.
+        * global_set (set): a set or a list of phrases that we want to find the word that match the pattern in. If set to `None`, the search is condacted only in the local_set. Defaults to `None`.
+
+    Returns:
+        * set: a set of the phrases that contain the word matching the entry pattern.
+    """
+    matching_result_set = set()
+    for word in local_set:
+        if pattern in word:
+            if global_set:
+                for element in global_set:
+                    if word in element:
+                        matching_result_set.add(element)
+            else:
+                matching_result_set.add(word)
+    if len(matching_result_set):
+        return matching_result_set
+    else:
+        raise ValueError(error_message)
 
 
 if __name__ == "__main__":
