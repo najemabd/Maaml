@@ -1,6 +1,13 @@
 import os
 import pandas as pd
 import time
+from math import sqrt
+
+mean = lambda data: float(sum(data) / len(data))
+variance = lambda data: sum([x ** 2 for x in [i - mean(data) for i in data]]) / float(
+    len(data)
+)
+std_dev = lambda data: sqrt(variance(data))
 
 
 def save_csv(df, path, name, verbose=0, prompt=None):
@@ -25,7 +32,7 @@ def save_csv(df, path, name, verbose=0, prompt=None):
     if not os.path.exists(path):
         os.makedirs(path)
     df.to_csv(f"{path}/{name}", index=False)
-    if verbose == 1:
+    if verbose > 0:
         if prompt is None:
             print(
                 f"\n\033[1mThe file {name} was saved in the path :\n{os.getcwd()}/{path} \033[0m\n"
@@ -56,7 +63,7 @@ def save_parquet(df, path, name, verbose=0, prompt=None):
     if not os.path.exists(path):
         os.makedirs(path)
     df.to_parquet(f"{path}/{name}", index=False)
-    if verbose == 1:
+    if verbose > 0:
         if prompt is None:
             print(
                 f"\n\033[1mThe file {name} was saved in the path :\n{os.getcwd()}/{path} \033[0m\n"
@@ -79,7 +86,7 @@ def read_csv(path, delimiter=" ", header=None, verbose=0, prompt=None):
         * pandas.DataFrame: A pandas dataframe of the read file.
     """
     df_csv = pd.read_table(path, header=header, delimiter=delimiter)
-    if verbose == 1:
+    if verbose > 0:
         if prompt is None:
             print(
                 f"\n\033[1mLoading dataframe from csv file in:\n{os.getcwd()}/{path} \033[0m\n"
@@ -102,7 +109,7 @@ def read_parquet(path, verbose=0, prompt=None):
         * pandas.DataFrame: A pandas dataframe of the read file.
     """
     df_parquet = pd.read_parquet(path)
-    if verbose == 1:
+    if verbose > 0:
         if prompt is None:
             print(
                 f"\n\033[1mLoading dataframe from parquet file in:\n{os.getcwd()}/{path} \033[0m\n"
@@ -172,7 +179,7 @@ class FileScraper:
         Args:
             * path (str): The path to the search directory.
             * search_list (list): List of strings representing the searched files.
-            * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``0``.
+            * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1`` or ``2`` or ``3``. Defaults to ``0``.
         """
         self.verbose = verbose
         start_time = time.perf_counter()
@@ -184,14 +191,16 @@ class FileScraper:
         self.all_files_count = len(self.all_files)
         end_time = time.perf_counter()
         self.time = f"{end_time-start_time} (s)"
-        print(f"Finished searching in {self.time}")
-        print(
-            f"{self.found_files_count} matching files found from total of {self.all_files_count} existant files"
-        )
+        if self.verbose == 1:
+            print(f"Finished searching in {self.time}")
+            print(
+                f"{self.found_files_count} matching files found from total of {self.all_files_count} existant files"
+            )
         if len(self.searched_list):
             print(f"These elements are not found: {self.searched_list}\n")
         else:
-            print("*******All searched elements were found successfully*******\n")
+            if self.verbose == 1:
+                print("*******All searched elements were found successfully*******\n")
 
     def __call__(self):
         """A method for the class instance call
@@ -213,16 +222,16 @@ class FileScraper:
         files = []
         for text in os.listdir(path):
             if os.path.isdir(os.path.join(path, text)):
-                if self.verbose == 2:
+                if self.verbose == 3:
                     print(f"Changing directory to subdirectory: '{text}'")
                 dir = os.path.join(path, text)
                 localfiles = self.file_scraping(dir, search_list)
-                if self.verbose == 2:
+                if self.verbose == 3:
                     if localfiles != []:
                         print(f"'{text}' files :{localfiles}")
                 if localfiles == []:
                     localfiles, dir = files, path
-                    if self.verbose == 2:
+                    if self.verbose == 3:
                         if localfiles == []:
                             print(f"No files found in the '{text}' directory")
                         else:
@@ -242,14 +251,14 @@ class FileScraper:
                             try:
                                 if file_path not in self.path_list:
                                     self.path_list.append(file_path)
-                                    if self.verbose == 1:
+                                    if self.verbose == 2:
                                         print(f"file '{file}' found in: \n{dir}")
                                         print(
                                             "**File path added to the path_list successfully**\n"
                                         )
                             except AttributeError:
                                 self.path_list = [file_path]
-                                if self.verbose == 1:
+                                if self.verbose == 2:
                                     print(f"file '{file}' found in: \n{dir}")
                                     print(
                                         "**Initalization of the path_list with the file path is successful**\n"
