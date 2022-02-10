@@ -120,6 +120,14 @@ class DataCleaner:
             PATH = "cleaned_dataset"
             save_csv(self.dataset, PATH, save_tag, verbose=verbose)
 
+    def __call__(self):
+        """A method for the class instance call
+
+        Returns:
+            * pandas.DataFrame: The cleaned dataset.
+        """
+        return self.dataset
+
     @staticmethod
     def window_stepping(
         data=None,
