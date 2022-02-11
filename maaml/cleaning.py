@@ -1,4 +1,4 @@
-from maaml.utils import save_csv, DataFrame
+from maaml.utils import DataFrame, save_csv, save_parquet
 
 
 class DataCleaner:
@@ -13,7 +13,7 @@ class DataCleaner:
     * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
     * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
     * add_columns_dictionnary (dict, optional): A dictionnary of keys (column names) and values to be added to the array or the pandas.DataFrame, if set to `None` will skip adding data. Defaults to `None`.
-    * save_dataset (bool, optional): in the case of `True` saves the dataset in a newly created directory under the working directory. Defaults to `False`.
+    * save_to (str, optional): Can be `"csv"` or `"parquet"` or `None` if set to `"csv"` or `"parquet"` will save the dataset to the corresponding format in a newly created directory under the working directory, if set to `None` will not save the dataset. Defaults to `None`.
     * save_tag (str, optional): add the name tag of the file to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
     * timestamp_column (str, optional): the name of the column that has the timpestamps in seconds of the time series data. Defaults to `"Timestamp (seconds)"`.
     * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
@@ -29,7 +29,7 @@ class DataCleaner:
         window_transformation=False,
         window_transformation_function=lambda x: sum(x) / len(x),
         add_columns_dictionnary: dict = None,
-        save_dataset=False,
+        save_to=None,
         save_tag="dataset",
         timestamp_column="Timestamp (seconds)",
         verbose=0,
@@ -45,26 +45,27 @@ class DataCleaner:
         * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
         * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
         * add_columns_dictionnary (dict, optional): A dictionnary of keys (column names) and values to be added to the array or the pandas.DataFrame, if set to `None` will skip adding data. Defaults to `None`.
-        * save_dataset (bool, optional): in the case of `True` saves the dataset in a newly created directory under the working directory. Defaults to `False`.
+        * save_to (str, optional): Can be `"csv"` or `"parquet"` or `None` if set to `"csv"` or `"parquet"` will save the dataset to the corresponding format in a newly created directory under the working directory, if set to `None` will not save the dataset. Defaults to `None`.
         * save_tag (str, optional): add the name tag of the file to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
         * timestamp_column (str, optional): the name of the column that has the timpestamps in seconds of the time series data. Defaults to `"Timestamp (seconds)"`.
         * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
         """
-        self.raw_data = data
+        data = DataFrame(data)
+        self.raw_data = data.copy(deep=True)
         if drop_duplicates is True:
             self.filtered_data = data.drop_duplicates(subset=[timestamp_column])
             if verbose == 1:
                 print(
-                    f"\nData filtered successfully, duplicates droped based on {timestamp_column} column."
+                    f"\nData filtered successfully, duplicates droped based on '{timestamp_column}' column."
                 )
         else:
-            self.filtered_data = self.raw_data
+            self.filtered_data = data
             if verbose == 1:
-                print(f"\nNo duplicates droped, filtered_data is raw_data")
+                print(f"\nNo duplicates droped, filtered_data is raw_data.")
         if (window_size is None) and (step is None):
             self.windowed_data = self.filtered_data
             if verbose == 1:
-                print(f"No window stepping,windowed_data is filtered_data")
+                print(f"No window stepping,windowed_data is filtered_data.")
         else:
             self.windowed_data = self.window_stepping(
                 self.filtered_data,
@@ -85,7 +86,7 @@ class DataCleaner:
         else:
             self.merged_data = self.windowed_data
             if verbose == 1:
-                print(f"No data merging,merged_data is windowed_data")
+                print(f"No data merging,merged_data is windowed_data.")
         self.interpolated_data = self.data_interpolating(
             self.merged_data, timestamp_column=timestamp_column, verbose=verbose
         )
@@ -98,9 +99,11 @@ class DataCleaner:
                 add_columns_dictionnary=add_columns_dictionnary,
                 verbose=verbose,
             )
-        if save_dataset == True:
-            PATH = "cleaned_dataset"
+        PATH = "cleaned_dataset"
+        if save_to == "csv":
             save_csv(self.dataset, PATH, save_tag, verbose=verbose)
+        elif save_to == "parquet":
+            save_parquet(self.dataset, PATH, save_tag, verbose=verbose)
 
     def __call__(self):
         """A method for the class instance call
@@ -138,17 +141,23 @@ class DataCleaner:
                 if window_size == 0 or step == 0:
                     if verbose == 1:
                         print(
-                            "\nATTENTION: No window stepping,one of window_size or step are set to 0"
+                            "\nATTENTION: No window stepping,one or both of window_size and step is set to 0."
+                        )
+                    return data
+                elif step >= len(data) or window_size >= len(data):
+                    if verbose == 1:
+                        print(
+                            "\nATTENTION: No window stepping,one or both window_size and step length is the same or bigger as data length."
                         )
                     return data
                 else:
                     final_data = DataFrame()
                     if verbose == 1:
                         if window_transformation is True:
-                            print("\n\033[1mWindow transformation applied\033[0m")
+                            print("\n\033[1mWindow transformation applied.\033[0m")
                         else:
                             print(
-                                f"\nwindow stepping applied with window size: {window_size} and step : {step}"
+                                f"\nwindow stepping applied with window size: {window_size} and step : {step} ."
                             )
                     for i in range(0, len(data) - 1, step):
                         window_segment = data[i : i + window_size]
@@ -162,7 +171,7 @@ class DataCleaner:
             else:
                 return data
         else:
-            print("ERROR: Empty data entry")
+            print("ERROR: Empty data entry.")
         return final_data
 
     @staticmethod
@@ -185,6 +194,8 @@ class DataCleaner:
         Returns:
             * pandas.DataFrame: a pandas.Dataframe with the two orginal dataframes merged using `timestamp_column` as reference.
         """
+        data = DataFrame(data)
+        new_data = DataFrame(new_data)
         try:
             while data.dtypes[timestamp_column] != "int64":
                 if verbose == 1:
@@ -222,7 +233,12 @@ class DataCleaner:
             )
             data_merged = data_merged.reset_index()
             if verbose == 1:
-                print(f"Shape of the megred data: {data_merged.shape}\n")
+                print(
+                    f"\nShape of data before merge: {data.shape} | Shape of data to be merged: {new_data.shape} ."
+                )
+                print(
+                    f"\033[1mShape of the merged data: {data_merged.shape} .\033[0m\n"
+                )
                 print("\033[1m", "******* DATA SUCCESSFULLY MERGED *******", "\033[0m")
         except Exception:
             print(
@@ -256,8 +272,9 @@ class DataCleaner:
                     print("\n       Executing interpolation     \n")
                 missing_values = data.drop(timestamp_column, axis=1)
                 missing_values = missing_values.interpolate(method="cubic", limit=3)
-                data[missing_values.columns] = missing_values
-                data_interpolated = data
+                data_interpolated = data.copy(deep=True)
+                data_interpolated[missing_values.columns] = missing_values
+                # data_interpolated = data
                 if verbose == 1:
                     print(
                         f"\n    State after interpolation    \nCOLUMNS                   NUMBER OF RAWS WITH MISSING DATA\n{data_interpolated.isnull().sum()}\n"
@@ -356,10 +373,10 @@ class DataCleaner:
 if __name__ == "__main__":
     DATA_DIR_PATH = "/run/media/najem/34b207a8-0f0c-4398-bba2-f31339727706/home/stock/The_stock/dev & datasets/PhD/datasets/UAH-DRIVESET-v1/"
     my_dict = {
-        "Timestamp (seconds)": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
-        "speed": [40, 45, 60, 62, 70, 75, 80, None, 72, 70],
-        "loc": [3, 4, 7, 10, None, 15, 17, 20, 24, 27],
-        "driver": ["D1", "D1", "D1", "D1", "D2", "D4", None, "D2", "D1", "D5"],
+        "Timestamp (seconds)": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 4],
+        "speed": [40, 45, 60, 62, 70, 75, 80, None, 72, 70, 80],
+        "loc": [3, 4, 7, 10, None, 15, 17, 20, 24, 27, 5],
+        "driver": ["D1", "D1", "D1", "D1", "D2", "D4", None, "D2", "D1", "D5", "D6"],
         "target": [
             "normal",
             "normal",
@@ -371,15 +388,26 @@ if __name__ == "__main__":
             "normal",
             "normal",
             "drowsy",
+            "normal",
         ],
     }
-    data = DataFrame(my_dict)
+    data = my_dict
     cleaning = DataCleaner(
         data,
-        drop_duplicates=False,
-        add_columns_dictionnary={"axis": [12, 4, 5, 7, 5, 8, 2, 5, 4]},
+        merge_data={
+            "Timestamp (seconds)": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 4],
+            "axis": [12, 4, 5, 7, 5, 8, 2, 5, 4, 6, 8],
+        },
+        window_size=5,
+        step=2,
+        drop_duplicates=True,
+        add_columns_dictionnary={"axis_origin": [12, 4, 5, 7, 5, 8, 2, 5, 4]},
         save_dataset=True,
         verbose=1,
     )
-    print(cleaning.raw_data)
-    print(cleaning.dataset)
+    print("raw data:\n", cleaning.raw_data)
+    print("filtered data:\n", cleaning.filtered_data)
+    print("windowed data:\n", cleaning.windowed_data)
+    print("merged data:\n", cleaning.merged_data)
+    print("interpolated data:\n", cleaning.interpolated_data)
+    print("cleaned data:\n", cleaning.dataset)
