@@ -1,6 +1,13 @@
 import os
 import pandas as pd
 import time
+from math import sqrt
+
+mean = lambda data: float(sum(data) / len(data))
+variance = lambda data: sum([x ** 2 for x in [i - mean(data) for i in data]]) / float(
+    len(data)
+)
+std_dev = lambda data: sqrt(variance(data))
 
 
 def save_csv(df, path, name, verbose=0, prompt=None):
@@ -18,17 +25,17 @@ def save_csv(df, path, name, verbose=0, prompt=None):
     """
     if not isinstance(df, pd.DataFrame):
         df = pd.DataFrame(df)
-    if not path.endswith("/"):
-        path = path + "/"
     if not name.endswith(".csv"):
         name = name + ".csv"
     if not os.path.exists(path):
         os.makedirs(path)
-    df.to_csv(f"{path}/{name}", index=False)
-    if verbose == 1:
+    full_path = os.path.join(path, name)
+    df.to_csv(full_path, index=False)
+    if verbose > 0:
         if prompt is None:
+            abs_path = os.path.join(os.getcwd(), path)
             print(
-                f"\n\033[1mThe file {name} was saved in the path :\n{os.getcwd()}/{path} \033[0m\n"
+                f"\n\033[1mThe file {name} was saved in the path :\n{abs_path} \033[0m\n"
             )
         else:
             print(prompt)
@@ -49,17 +56,17 @@ def save_parquet(df, path, name, verbose=0, prompt=None):
     """
     if not isinstance(df, pd.DataFrame):
         df = pd.DataFrame(df)
-    if not path.endswith("/"):
-        path = path + "/"
     if not name.endswith(".parquet"):
         name = name + ".parquet"
     if not os.path.exists(path):
         os.makedirs(path)
-    df.to_parquet(f"{path}/{name}", index=False)
-    if verbose == 1:
+    full_path = os.path.join(path, name)
+    df.to_parquet(full_path, index=False)
+    if verbose > 0:
         if prompt is None:
+            abs_path = os.path.join(os.getcwd(), path)
             print(
-                f"\n\033[1mThe file {name} was saved in the path :\n{os.getcwd()}/{path} \033[0m\n"
+                f"\n\033[1mThe file {name} was saved in the path :\n{abs_path} \033[0m\n"
             )
         else:
             print(prompt)
@@ -69,7 +76,7 @@ def read_csv(path, delimiter=" ", header=None, verbose=0, prompt=None):
     """A function to read a csv file and return a pandas dataframe.
 
     Args:
-        * path (str): A string of the path where the file is going to be saved
+        * path (str): The data file name in the working directory or the data file path with the file name.
         * delimiter (str, optional): A string for the type of separation used in the csv file. Defaults to ``" "``.
         * header (int, optional): The specification of the technique used to define the columns names: ``None`` in case of no columns names in the file, ``0`` in case that first row is the header. Defaults to ``None``.
         * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
@@ -79,11 +86,9 @@ def read_csv(path, delimiter=" ", header=None, verbose=0, prompt=None):
         * pandas.DataFrame: A pandas dataframe of the read file.
     """
     df_csv = pd.read_table(path, header=header, delimiter=delimiter)
-    if verbose == 1:
+    if verbose > 0:
         if prompt is None:
-            print(
-                f"\n\033[1mLoading dataframe from csv file in:\n{os.getcwd()}/{path} \033[0m\n"
-            )
+            print(f"\n\033[1mLoading dataframe from csv file in:\n{path} \033[0m\n")
         else:
             print(prompt)
     return df_csv
@@ -93,7 +98,7 @@ def read_parquet(path, verbose=0, prompt=None):
     """A function to read a parquet file and return a pandas dataframe.
 
     Args:
-        * path (str): A string of the path where the file is going to be saved
+        * path (str): The data file name in the working directory or the data file path with the file name.
         * delimiter (str, optional): A string for the type of separation used in the parquet file. Defaults to ``" "``.
         * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
         * prompt (str, optional): A message in the case of verbose is ``1``, if not specified another default message will be displayed. Defaults to ``None``.
@@ -102,11 +107,9 @@ def read_parquet(path, verbose=0, prompt=None):
         * pandas.DataFrame: A pandas dataframe of the read file.
     """
     df_parquet = pd.read_parquet(path)
-    if verbose == 1:
+    if verbose > 0:
         if prompt is None:
-            print(
-                f"\n\033[1mLoading dataframe from parquet file in:\n{os.getcwd()}/{path} \033[0m\n"
-            )
+            print(f"\n\033[1mLoading dataframe from parquet file in:\n{path} \033[0m\n")
         else:
             print(prompt)
     return df_parquet
@@ -122,7 +125,7 @@ def dict_transpose(dictionary):
     Returns:
         * dict: A transposed python dictionary
 
-    Exemple:
+    Example:
         >>> d = {
             "classifier": ["SVM","LR","MLP"],
             "scaler": ["Standard", "Standard", "Standard"],
@@ -157,6 +160,7 @@ class FileScraper:
     `all_files` attribute represnting the paths of all existing files in a list of strings format available in the given path directory.
     ``all_files_count`` attribute representing the number of all existing files available in the given path directory.
     `time` attribute representing the execution time of the search.
+    A `__call__ ` method for calling an instance of the class to return the `path_list` attribute.
 
 
     Args:
@@ -171,25 +175,28 @@ class FileScraper:
         Args:
             * path (str): The path to the search directory.
             * search_list (list): List of strings representing the searched files.
-            * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``0``.
+            * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1`` or ``2`` or ``3``. Defaults to ``0``.
         """
+        self.verbose = verbose
         start_time = time.perf_counter()
         self.parent_path = path
-        self.search_list = search_list
+        self.search_list = set(search_list)
         self.searched_list = search_list.copy()
-        self.file_scraping(self.parent_path, self.search_list, verbose=verbose)
+        self.file_scraping(self.parent_path, self.search_list)
         self.found_files_count = len(self.path_list)
         self.all_files_count = len(self.all_files)
         end_time = time.perf_counter()
         self.time = f"{end_time-start_time} (s)"
-        print(f"Finished searching in {self.time}")
-        print(
-            f"Total of {self.found_files_count} found from total of {self.all_files_count} existant files"
-        )
-        if self.searched_list != []:
+        if self.verbose == 1:
+            print(f"Finished searching in {self.time}")
+            print(
+                f"{self.found_files_count} matching files found from total of {self.all_files_count} existant files"
+            )
+        if len(self.searched_list):
             print(f"These elements are not found: {self.searched_list}\n")
         else:
-            print("*******All search_list elements were found successfully*******\n")
+            if self.verbose == 1:
+                print("*******All searched elements were found successfully*******\n")
 
     def __call__(self):
         """A method for the class instance call
@@ -199,12 +206,11 @@ class FileScraper:
         """
         return self.path_list
 
-    def file_scraping(self, path, verbose=0):
+    def file_scraping(self, path, search_list):
         """A class method that searches
 
         Args:
             * path (str): The path to the search directory.
-            * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
 
         Returns:
             list: list of strings representing the paths of the searched files.
@@ -212,16 +218,16 @@ class FileScraper:
         files = []
         for text in os.listdir(path):
             if os.path.isdir(os.path.join(path, text)):
-                if verbose == 2:
+                if self.verbose == 3:
                     print(f"Changing directory to subdirectory: '{text}'")
                 dir = os.path.join(path, text)
-                localfiles = self.file_scraping(dir, self.search_list, verbose=verbose)
-                if verbose == 2:
+                localfiles = self.file_scraping(dir, search_list)
+                if self.verbose == 3:
                     if localfiles != []:
                         print(f"'{text}' files :{localfiles}")
                 if localfiles == []:
                     localfiles, dir = files, path
-                    if verbose == 2:
+                    if self.verbose == 3:
                         if localfiles == []:
                             print(f"No files found in the '{text}' directory")
                         else:
@@ -234,21 +240,21 @@ class FileScraper:
                             self.all_files.append(file_path)
                     except AttributeError:
                         self.all_files = [file_path]
-                    for picked_file in self.search_list:
+                    for picked_file in search_list:
                         if file == picked_file:
                             if picked_file in self.searched_list:
                                 self.searched_list.remove(picked_file)
                             try:
                                 if file_path not in self.path_list:
                                     self.path_list.append(file_path)
-                                    if verbose == 1:
+                                    if self.verbose == 2:
                                         print(f"file '{file}' found in: \n{dir}")
                                         print(
                                             "**File path added to the path_list successfully**\n"
                                         )
                             except AttributeError:
                                 self.path_list = [file_path]
-                                if verbose == 1:
+                                if self.verbose == 2:
                                     print(f"file '{file}' found in: \n{dir}")
                                     print(
                                         "**Initalization of the path_list with the file path is successful**\n"
@@ -257,6 +263,33 @@ class FileScraper:
             elif os.path.isfile(os.path.join(path, text)):
                 files.append(text)
         return files
+
+
+def pattern_search(pattern, local_set, error_message, global_set=None):
+    """A function to collect phrases starting from a string pattern.
+
+    Args:
+        * pattern (str): A sylable or a part of a word that we want to find.
+        * local_set (set): a set or list of complete and correct words that the pattern could be in.
+        * error_message (str): a message to print with the ValueError raised in case pattern is not found.
+        * global_set (set): a set or a list of phrases that we want to find the word that match the pattern in. If set to `None`, the search is condacted only in the local_set. Defaults to `None`.
+
+    Returns:
+        * set: a set of the phrases that contain the word matching the entry pattern.
+    """
+    matching_result_set = set()
+    for word in local_set:
+        if pattern in word:
+            if global_set:
+                for element in global_set:
+                    if word in element:
+                        matching_result_set.add(element)
+            else:
+                matching_result_set.add(word)
+    if len(matching_result_set):
+        return matching_result_set
+    else:
+        raise ValueError(error_message)
 
 
 if __name__ == "__main__":

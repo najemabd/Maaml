@@ -15,8 +15,27 @@ import time
 
 
 class DataPreprocessor:
-    """[summary]
-    A class for Data preprocessing specialized in time series data analysis from dataframes
+    """A class for Data preprocessing specialized in time series data analysis from dataframes. includes these attributes: `raw_dataset`, `filtered_dataset` ,`numeric_dataset` ,`scaled_dataset` ,`scaler_name` ,`ml_dataset` ,`features` ,`target` ,`target_ohe` ,`preprocessed_dataset` ,
+    `dl_dataset` and in the case of window stepping `windowed_dataset` ,`ml_dataset_w` ,`features_w` ,`target_w` ,`target_ohe_w` ,`preprocessed_dataset_w` ,`dl_dataset_w`.
+    It also includes useful static methods a `uahdataset_loading` for loading the UAHdataset,`label_encoding` for encoding categorical data,`data_scaling` for scaling the data,`one_hot_encoding` for one hot encoding and `window_stepping` for window stepping.
+
+    Args:
+    * data_path (str, optional): The data file name in the working directory or the data file path with the file name used in case the dataset prarameter is not set. Defaults to `""`.
+    * specific_data (str or int, optional): A parameter to define a specific grouping from the UAHdataset used in case the dataset prarameter is not set. Defaults to `None`.
+    * target_name (str, optional): The name of the dataset target as a string. Defaults to `"target"`.
+    * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features in columns and a target in one column with a name that match the target provided in the `target_name`. Defaults to `None`.
+    * scaler (str, optional): selects the scaling technique used as integers from `"0"` to `"8"` passed as strings, or the name of the scaling technique such as `"minmax"` or `"normalizer"`. Defaults to no scaling with the value `"0"`.
+    * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `["Timestamp (seconds)"]`.
+    * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `[]`.
+    * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `["target"]`.
+    * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `0` will not perform the window stepping. Defaults to `0`.
+    * step (int, optional): The length of the step for window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `0`.
+    * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
+    * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
+    * from_csv (bool, optional): Specifies if the data loaded from data_path is a csv file or not. Defaults to `True`.
+    * save_dataset (bool, optional): saves in a newly created directory under the working directory in the case of `True`, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied. Defaults to `False`.
+    * save_tag (str, optional): add a custom tag to the name of the files to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
+    * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
     """
 
     def __init__(
@@ -35,9 +54,29 @@ class DataPreprocessor:
         window_transformation_function=lambda x: sum(x) / len(x),
         from_csv=True,
         save_dataset=False,
-        save_tag="Dataset",
+        save_tag="dataset",
         verbose=0,
     ):
+        """A constructor for the DataProcessor class
+
+        Args:
+            * data_path (str, optional): The data file name in the working directory or the data file path with the file name used in case the dataset prarameter is not set. Defaults to `""`.
+            * specific_data (str or int, optional): A parameter to define a specific grouping from the UAHdataset used in case the dataset prarameter is not set. Defaults to `None`.
+            * target_name (str, optional): The name of the dataset target as a string. Defaults to `"target"`.
+            * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features in columns and a target in one column with a name that match the target provided in the `target_name`. Defaults to `None`.
+            * scaler (str, optional): selects the scaling technique used as integers from `"0"` to `"8"` passed as strings, or the name of the scaling technique such as `"minmax"` or `"normalizer"`. Defaults to no scaling with the value `"0"`.
+            * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `["Timestamp (seconds)"]`.
+            * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `[]`.
+            * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `["target"]`.
+            * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `0` will not perform the window stepping. Defaults to `0`.
+            * step (int, optional): The length of the step for window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `0`.
+            * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
+            * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
+            * from_csv (bool, optional): Specifies if the data loaded from data_path is a csv file or not. Defaults to `True`.
+            * save_dataset (bool, optional): saves in a newly created directory under the working directory in the case of `True`, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied. Defaults to `False`.
+            * save_tag (str, optional): add a custom tag to the name of the files to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
+            * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
+        """
         start_time = time.perf_counter()
         if dataset is None or isinstance(dataset, str):
             if from_csv is True:
@@ -149,6 +188,16 @@ class DataPreprocessor:
 
     @staticmethod
     def uahdataset_loading(path="", specific=None, verbose=1):
+        """A static method for loading the uahdatset with various configirations.
+
+        Args:
+            * path (str, optional): The path to the dataset, if not provided, the internal dataset will be loaded. Defaults to "".
+            * specific_data (str or int, optional): A parameter to define a specific grouping from the UAHdataset, if an integer used, the function will return the dataset of the driver matching that integer, if `""` or `"secondary road"` will return the data in the secondary road only, the same goes for `"0"` and `"motorway road"` returning the motorway road data only, if `None` the whole dataset is returned.the Defaults to `None`.
+            * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``1``.
+
+        Returns:
+            * pandas.DataFrame: A UAHdataset grouping for time series data
+        """
         if path == "":
             DATA_PATH = pkg_resources.resource_filename(
                 __name__, "Datasets/UAH_dataset/dataset/UAHDataset.csv"
@@ -189,6 +238,16 @@ class DataPreprocessor:
 
     @staticmethod
     def label_encoding(data, target, verbose=1):
+        """A static method to to convert categorical data column to numeric data via label encoding.
+
+        Args:
+            * data (pandas.DataFrame or array or numpy.array): An array of data with a column of categorical data.
+            * target ([str]): The name of the column to be converted.
+            * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
+
+        Returns:
+            * pandas.DataFrame: the data with the cateorical data column converted to numeric data.
+        """
         encoder = LabelEncoder()
         df = pd.DataFrame(data)
         try:
@@ -207,6 +266,17 @@ class DataPreprocessor:
 
     @staticmethod
     def data_scaling(data, excluded_axis=[], scaler="minmax", verbose=1):
+        """A static method to scale the data using 8 diffrent scaling techniques or returning the raw data with all column values conveted to floats.
+
+        Args:
+            * data (pandas.DataFrame): A numeric dataset in a pandas.DataFrame format.
+            * excluded_axis (list, optional): A list of column names for the columns to be excluded from the scaling process. Defaults to `[]`.
+            * scaler (str, optional): selects the scaling technique used as integers from `"0"` to `"8"` passed as strings, or the name of the scaling technique such as `"RawData (no scaling)"` or `"normalizer"`. Defaults to `"minmax"`.
+            * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
+
+        Returns:
+            * tuple: (pandas.DataFrame,str) A scaled pandas.DataFrame Data and the name of the scaling technique used as string.
+        """
         scaled_df = data
         scaled_df = scaled_df.drop(excluded_axis, axis=1)
         columns_names_list = scaled_df.columns
@@ -260,6 +330,34 @@ class DataPreprocessor:
 
     @staticmethod
     def one_hot_encoding(data, target="target", verbose=1):
+        """A static method to convert a single column to a number of columns corresponding to the number of unique values in that columns by One Hot encoding.
+        Example:
+            >>> df
+            index              Timestamp              Speed              driver               road              target
+            0                  7                  65.2                  1                  secondary                  normal
+            1                  8                  68.5                  1                  secondary                  normal
+            2                  9                  73.6                  1                  secondary                  normal
+            3                 10                  80.2                  1                  secondary                  agressif
+            4                 11                  90.9                  1                  secondary                  agressif
+            >>> print(df[target].unique())
+            ['normal' 'agressif']
+            >>> df_ohe = one_hot_encoding(df,target="target",verbose=0)
+            >>> df_ohe
+                    0    1
+            0      0.0  1.0
+            1      0.0  1.0
+            2      0.0  1.0
+            3      1.0  0.0
+            4      1.0  0.0
+
+        Args:
+            * data (pandas.DataFrame): A data array in pandas.DataFrame format.
+            * target (str, optional): The name of the target column that is going to be one hot encoded. Defaults to `"target"`.
+            * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
+
+        Returns:
+            * pandas.DataFrame: the target column converted to binary format in a pandas.DataFrame with the number of columns corresponds to the unique values of the target column.
+        """
         encoder = OneHotEncoder()
         try:
             if verbose == 1:
@@ -285,13 +383,26 @@ class DataPreprocessor:
 
     @staticmethod
     def window_stepping(
-        data=[],
+        data=None,
         window_size=0,
         step=0,
         window_transformation=False,
         transformation_fn=lambda x: sum(x) / len(x),
         verbose=1,
     ):
+        """A static method for window stepping a time series data.
+
+        Args:
+            * data (pandas.DataFrame, optional): A data array in pandas.DataFrame format. Defaults to `None`.
+            * window_size (int, optional): the size of the window, in case of `0` will not perform the window stepping. Defaults to `0`.
+            * step (int, optional): The length of the step, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `0`.
+            * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
+            * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
+            * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
+
+        Returns:
+            * pandas.DataFrame: A window stepped data in case the window was bigger than 0 or the entry dataframe in case window_size is equal to 0.
+        """
         final_data = pd.DataFrame()
         if len(data) != 0:
             if window_size == 0:
@@ -313,7 +424,6 @@ class DataPreprocessor:
                         window_segment = window_segment.apply(transformation_fn, axis=0)
                     final_data = final_data.append(window_segment, ignore_index=True)
         else:
-            final_data = []
             print("ERROR: Empty data entry")
         return final_data
 
