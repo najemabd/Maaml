@@ -25,17 +25,17 @@ def save_csv(df, path, name, verbose=0, prompt=None):
     """
     if not isinstance(df, pd.DataFrame):
         df = pd.DataFrame(df)
-    if not path.endswith("/"):
-        path = path + "/"
     if not name.endswith(".csv"):
         name = name + ".csv"
     if not os.path.exists(path):
         os.makedirs(path)
-    df.to_csv(f"{path}/{name}", index=False)
+    full_path = os.path.join(path, name)
+    df.to_csv(full_path, index=False)
     if verbose > 0:
         if prompt is None:
+            abs_path = os.path.join(os.getcwd(), path)
             print(
-                f"\n\033[1mThe file {name} was saved in the path :\n{os.getcwd()}/{path} \033[0m\n"
+                f"\n\033[1mThe file {name} was saved in the path :\n{abs_path} \033[0m\n"
             )
         else:
             print(prompt)
@@ -56,17 +56,17 @@ def save_parquet(df, path, name, verbose=0, prompt=None):
     """
     if not isinstance(df, pd.DataFrame):
         df = pd.DataFrame(df)
-    if not path.endswith("/"):
-        path = path + "/"
     if not name.endswith(".parquet"):
         name = name + ".parquet"
     if not os.path.exists(path):
         os.makedirs(path)
-    df.to_parquet(f"{path}/{name}", index=False)
+    full_path = os.path.join(path, name)
+    df.to_parquet(full_path, index=False)
     if verbose > 0:
         if prompt is None:
+            abs_path = os.path.join(os.getcwd(), path)
             print(
-                f"\n\033[1mThe file {name} was saved in the path :\n{os.getcwd()}/{path} \033[0m\n"
+                f"\n\033[1mThe file {name} was saved in the path :\n{abs_path} \033[0m\n"
             )
         else:
             print(prompt)
@@ -88,9 +88,7 @@ def read_csv(path, delimiter=" ", header=None, verbose=0, prompt=None):
     df_csv = pd.read_table(path, header=header, delimiter=delimiter)
     if verbose > 0:
         if prompt is None:
-            print(
-                f"\n\033[1mLoading dataframe from csv file in:\n{os.getcwd()}/{path} \033[0m\n"
-            )
+            print(f"\n\033[1mLoading dataframe from csv file in:\n{path} \033[0m\n")
         else:
             print(prompt)
     return df_csv
@@ -111,9 +109,7 @@ def read_parquet(path, verbose=0, prompt=None):
     df_parquet = pd.read_parquet(path)
     if verbose > 0:
         if prompt is None:
-            print(
-                f"\n\033[1mLoading dataframe from parquet file in:\n{os.getcwd()}/{path} \033[0m\n"
-            )
+            print(f"\n\033[1mLoading dataframe from parquet file in:\n{path} \033[0m\n")
         else:
             print(prompt)
     return df_parquet

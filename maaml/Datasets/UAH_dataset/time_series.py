@@ -560,8 +560,7 @@ if __name__ == "__main__":
         "acc",
         window_size_dt2=10,
         step_dt2=10,
-        verbose=3,
+        verbose=2,
     )
-    print(f"The dataset shape: {dataset.data.shape}")
 
 # %%
