@@ -1,34 +1,4 @@
-import pandas as pd
-from maaml.utils import save_csv
-
-
-class DataReader:
-    """A class for reading data from a csv file. includes a `path` attribute and `data` attribute and a `__call__ ` method for calling an instance of the class to return the `data` attribute.
-
-    Args:
-        * path (str): The data file name in the working directory or the data file path with the file name.
-        * header (int, optional):  The specification of the technique used to define the columns names: `None` in case of no columns names in the file, `0` in case that first row is the header. Defaults to `None`.
-        * delimiter (str, optional): A string for the type of separation used in the csv file. Defaults to `" "`.
-    """
-
-    def __init__(self, path, header=None, delimiter=" "):
-        """A constuctor for DataReader class
-
-        Args:
-        * path (str): The data file name in the working directory or the data file path with the file name.
-        * header (int, optional):  The specification of the technique used to define the columns names: `None` in case of no columns names in the file, `0` in case that first row is the header. Defaults to `None`.
-        * delimiter (str, optional): A string for the type of separation used in the csv file. Defaults to `" "`.
-        """
-        self.path = str(path)
-        self.data = pd.read_table(path, header=header, delimiter=delimiter)
-
-    def __call__(self):
-        """A method for the class instance call
-
-        Returns:
-            * pandas.DataFrame: The read dataset from the file.
-        """
-        return self.data
+from maaml.utils import save_csv, DataFrame
 
 
 class DataCleaner:
@@ -37,8 +7,8 @@ class DataCleaner:
     Args:
     * data (pandas.DataFrame or array or numpy.array): A time series dataset.
     * merge_data (pandas.DataFrame or array or numpy.array, optional): A time series dataset to be merged with the data in the `data` parameter. Defaults to `None`.
-    * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `0` will not perform the window stepping. Defaults to `0`.
-    * step (int, optional): The length of the step for window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `0`.
+    * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `None` will not perform the window stepping. Defaults to `None`.
+    * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
     * drop_duplicates (bool, optional): if `True` removes the duplicate values using the Timestamp column as refrence. Defaults to `True`.
     * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
     * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
@@ -53,8 +23,8 @@ class DataCleaner:
         self,
         data,
         merge_data=None,
-        window_size=0,
-        step=0,
+        window_size: int = None,
+        step: int = None,
         drop_duplicates=True,
         window_transformation=False,
         window_transformation_function=lambda x: sum(x) / len(x),
@@ -69,8 +39,8 @@ class DataCleaner:
         Args:
         * data (pandas.DataFrame or array or numpy.array): A time series dataset.
         * merge_data (pandas.DataFrame or array or numpy.array, optional): A time series dataset to be merged with the data in the `data` parameter. Defaults to `None`.
-        * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `0` will not perform the window stepping. Defaults to `0`.
-        * step (int, optional): The length of the step for window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `0`.
+        * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `None` will not perform the window stepping. Defaults to `None`.
+        * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
         * drop_duplicates (bool, optional): if `True` removes the duplicate values using the Timestamp column as reference. Defaults to `True`.
         * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
         * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
@@ -83,17 +53,27 @@ class DataCleaner:
         self.raw_data = data
         if drop_duplicates is True:
             self.filtered_data = data.drop_duplicates(subset=[timestamp_column])
+            if verbose == 1:
+                print(
+                    f"\nData filtered successfully, duplicates droped based on {timestamp_column} column."
+                )
         else:
             self.filtered_data = self.raw_data
-            print(f"no duplicates droped, filtered_data is raw_data")
-        self.windowed_data = self.window_stepping(
-            self.filtered_data,
-            window_size=window_size,
-            step=step,
-            window_transformation=window_transformation,
-            transformation_fn=window_transformation_function,
-            verbose=verbose,
-        )
+            if verbose == 1:
+                print(f"\nNo duplicates droped, filtered_data is raw_data")
+        if (window_size is None) and (step is None):
+            self.windowed_data = self.filtered_data
+            if verbose == 1:
+                print(f"No window stepping,windowed_data is filtered_data")
+        else:
+            self.windowed_data = self.window_stepping(
+                self.filtered_data,
+                window_size=window_size,
+                step=step,
+                window_transformation=window_transformation,
+                transformation_fn=window_transformation_function,
+                verbose=verbose,
+            )
         if merge_data is not None:
             self.merged_data = self.dataframes_merging(
                 self.windowed_data,
@@ -104,6 +84,8 @@ class DataCleaner:
             )
         else:
             self.merged_data = self.windowed_data
+            if verbose == 1:
+                print(f"No data merging,merged_data is windowed_data")
         self.interpolated_data = self.data_interpolating(
             self.merged_data, timestamp_column=timestamp_column, verbose=verbose
         )
@@ -131,8 +113,8 @@ class DataCleaner:
     @staticmethod
     def window_stepping(
         data=None,
-        window_size=0,
-        step=0,
+        window_size: int = None,
+        step: int = None,
         window_transformation=False,
         transformation_fn=lambda x: sum(x) / len(x),
         verbose=1,
@@ -141,8 +123,8 @@ class DataCleaner:
 
         Args:
             * data (pandas.DataFrame, optional): A data array in pandas.DataFrame format. Defaults to `None`.
-            * window_size (int, optional): the size of the window, in case of `0` will not perform the window stepping. Defaults to `0`.
-            * step (int, optional): The length of the step, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `0`.
+            * window_size (int, optional): the size of the window, in case of `None` will not perform the window stepping. Defaults to `None`.
+            * step (int, optional): The length of the step,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
             * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
             * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
             * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
@@ -150,26 +132,35 @@ class DataCleaner:
         Returns:
             * pandas.DataFrame: A window stepped data in case the window was bigger than 0 or the entry dataframe in case window_size is equal to 0.
         """
-        final_data = pd.DataFrame()
+
         if len(data) != 0:
-            if window_size == 0:
-                final_data = data
-                if verbose == 1:
-                    print("\nATTENTION: Entry data returned without window stepping")
-                return final_data
-            else:
-                if verbose == 1:
-                    if window_transformation is True:
-                        print("\n\033[1mWindow transformation applied\033[0m")
-                    else:
+            if (window_size is not None) and (step is not None):
+                if window_size == 0 or step == 0:
+                    if verbose == 1:
                         print(
-                            f"\nwindow stepping applied with window size: {window_size} and step : {step}"
+                            "\nATTENTION: No window stepping,one of window_size or step are set to 0"
                         )
-                for i in range(0, len(data) - 1, step):
-                    window_segment = data[i : i + window_size]
-                    if window_transformation is True:
-                        window_segment = window_segment.apply(transformation_fn, axis=0)
-                    final_data = final_data.append(window_segment, ignore_index=True)
+                    return data
+                else:
+                    final_data = DataFrame()
+                    if verbose == 1:
+                        if window_transformation is True:
+                            print("\n\033[1mWindow transformation applied\033[0m")
+                        else:
+                            print(
+                                f"\nwindow stepping applied with window size: {window_size} and step : {step}"
+                            )
+                    for i in range(0, len(data) - 1, step):
+                        window_segment = data[i : i + window_size]
+                        if window_transformation is True:
+                            window_segment = window_segment.apply(
+                                transformation_fn, axis=0
+                            )
+                        final_data = final_data.append(
+                            window_segment, ignore_index=True
+                        )
+            else:
+                return data
         else:
             print("ERROR: Empty data entry")
         return final_data
@@ -382,7 +373,7 @@ if __name__ == "__main__":
             "drowsy",
         ],
     }
-    data = pd.DataFrame(my_dict)
+    data = DataFrame(my_dict)
     cleaning = DataCleaner(
         data,
         drop_duplicates=False,

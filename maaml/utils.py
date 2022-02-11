@@ -10,6 +10,72 @@ variance = lambda data: sum([x ** 2 for x in [i - mean(data) for i in data]]) / 
 std_dev = lambda data: sqrt(variance(data))
 
 
+class DataFrame(pd.DataFrame):
+    """A class to create a DataFrame.
+
+    Args:
+        * pandas.DataFrame (object): A pandas dataframe.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """A constructor for DataFrame class."""
+        super().__init__(*args, **kwargs)
+
+
+class DataReader:
+    """A class for reading data in the form of dataframes from a file. includes a `path` attribute and `data` attribute and a `__call__ ` method for calling an instance of the class to return the `data` attribute.
+
+    Args:
+        * path (str): The data file name in the working directory or the data file path with the file name.
+        * header (int, optional):  The specification of the technique used to define the columns names, if needed for the file format,should be `None` in case of no columns names in the file, `0` in case that first row is the header. Defaults to `None`.
+        * delimiter (str, optional): A string for the type of separation used in the file, if needed for the file format. Defaults to `" "`.
+        * read_from (str,optinoal): The format of the read data such as `"csv"` or `"parquet"`, if set to `None` DataReader will try to guess the format. Defaults to `None`.
+        * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``0``.
+    """
+
+    def __init__(
+        self, path, header=None, delimiter=" ", read_from: str = None, verbose=0
+    ):
+        """A constuctor for DataReader class
+
+        Args:
+        * path (str): The data file name in the working directory or the data file path with the file name.
+        * header (int, optional):  The specification of the technique used to define the columns names: `None` in case of no columns names in the file, `0` in case that first row is the header. Defaults to `None`.
+        * delimiter (str, optional): A string for the type of separation used in the csv file. Defaults to `" "`.
+        * read_from (str,optinoal): The format of the read data such as `"csv"` or `"parquet"`, if set to `None` DataReader will try to guess the format. Defaults to `None`.
+        * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``0``.
+        """
+        self.path = str(path)
+        if path.endswith(".csv") or read_from == "csv":
+            self.data = read_csv(
+                path, header=header, delimiter=delimiter, verbose=verbose
+            )
+        elif path.endswith(".parquet") or read_from == "parquet":
+            self.data = read_parquet(path, verbose=verbose)
+        else:
+            try:
+                self.data = read_csv(
+                    path, header=header, delimiter=delimiter, verbose=0
+                )
+                if verbose == 1:
+                    print(f"\033[1mReading file from:\n{path} \033[0m\n")
+            except Exception:
+                if read_from is not None:
+                    print(
+                        f"please be specific about the data_format,your data_format '{read_from}' is not supported"
+                    )
+                else:
+                    print("please set the data_format")
+
+    def __call__(self):
+        """A method for the class instance call
+
+        Returns:
+            * pandas.DataFrame: The read dataset from the file.
+        """
+        return self.data
+
+
 def save_csv(df, path, name, verbose=0, prompt=None):
     """saves a csv file from pandas DataFrame to the given path with the given name,
     if the entry is not a pandas DataFrame, it gets transformed to a pandas
@@ -20,8 +86,7 @@ def save_csv(df, path, name, verbose=0, prompt=None):
         * path (str): A string of the path where the file is going to be saved
         * name (str): A string of the name of the saved file with or without the .csv extention
         * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
-        * prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default
-            generated prompt in case of verbosity set to ``1``. Defaults to ``None``.
+        * prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default generated prompt in case of verbosity set to ``1``. Defaults to ``None``.
     """
     if not isinstance(df, pd.DataFrame):
         df = pd.DataFrame(df)
@@ -51,8 +116,7 @@ def save_parquet(df, path, name, verbose=0, prompt=None):
         * path (str): A string of the path where the file is going to be saved
         * name (str): A string of the name of the saved file with or without the .parquet extention
         * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
-        * prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default
-            generated prompt in case of verbosity set to ``1``. Defaults to ``None``.
+        * prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default generated prompt in case of verbosity set to ``1``. Defaults to ``None``.
     """
     if not isinstance(df, pd.DataFrame):
         df = pd.DataFrame(df)
