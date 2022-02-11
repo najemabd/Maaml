@@ -1,4 +1,5 @@
 from maaml.utils import DataFrame, save_csv, save_parquet
+import time
 
 
 class DataCleaner:
@@ -50,6 +51,7 @@ class DataCleaner:
         * timestamp_column (str, optional): the name of the column that has the timpestamps in seconds of the time series data. Defaults to `"Timestamp (seconds)"`.
         * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
         """
+        start_time = time.perf_counter()
         data = DataFrame(data)
         self.raw_data = data.copy(deep=True)
         if drop_duplicates is True:
@@ -104,6 +106,11 @@ class DataCleaner:
             save_csv(self.dataset, PATH, save_tag, verbose=verbose)
         elif save_to == "parquet":
             save_parquet(self.dataset, PATH, save_tag, verbose=verbose)
+        self.exec_time = time.perf_counter() - start_time
+        if verbose == 1:
+            print(
+                f"\n\033[1m========= DATA CLEANED SUCCESSFULLY [ ET: {self.exec_time:.2f} (s) ] =========\033[0m\n"
+            )
 
     def __call__(self):
         """A method for the class instance call
@@ -402,7 +409,7 @@ if __name__ == "__main__":
         step=2,
         drop_duplicates=True,
         add_columns_dictionnary={"axis_origin": [12, 4, 5, 7, 5, 8, 2, 5, 4]},
-        save_dataset=True,
+        save_to=None,
         verbose=1,
     )
     print("raw data:\n", cleaning.raw_data)
