@@ -36,7 +36,7 @@ class DataReader:
     def __init__(
         self, path, header=None, delimiter=" ", read_from: str = None, verbose=0
     ):
-        """A constuctor for DataReader class
+        """A constuctor for DataReader class.
 
         Args:
         * path (str): The data file name in the working directory or the data file path with the file name.

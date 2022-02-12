@@ -1,5 +1,3 @@
-import pkg_resources
-import pandas as pd
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.preprocessing import (
     StandardScaler,
@@ -10,7 +8,7 @@ from sklearn.preprocessing import (
     PowerTransformer,
     Normalizer,
 )
-from maaml.utils import save_csv
+from maaml.utils import save_csv, DataFrame
 import time
 
 
@@ -20,10 +18,8 @@ class DataPreprocessor:
     It also includes useful static methods a `uahdataset_loading` for loading the UAHdataset,`label_encoding` for encoding categorical data,`data_scaling` for scaling the data,`one_hot_encoding` for one hot encoding and `window_stepping` for window stepping.
 
     Args:
-    * data_path (str, optional): The data file name in the working directory or the data file path with the file name used in case the dataset prarameter is not set. Defaults to `""`.
-    * specific_data (str or int, optional): A parameter to define a specific grouping from the UAHdataset used in case the dataset prarameter is not set. Defaults to `None`.
+    * data (pandas.DataFrame or array or numpy.array, optional): A dataframe that includes features in columns and a target in one column with a name that match the target provided in the `target_name`. Defaults to `None`.
     * target_name (str, optional): The name of the dataset target as a string. Defaults to `"target"`.
-    * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features in columns and a target in one column with a name that match the target provided in the `target_name`. Defaults to `None`.
     * scaler (str, optional): selects the scaling technique used as integers from `"0"` to `"8"` passed as strings, or the name of the scaling technique such as `"minmax"` or `"normalizer"`. Defaults to no scaling with the value `"0"`.
     * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `["Timestamp (seconds)"]`.
     * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `[]`.
@@ -40,10 +36,8 @@ class DataPreprocessor:
 
     def __init__(
         self,
-        data_path="",
-        specific_data=None,
+        data=None,
         target_name="target",
-        dataset=None,
         scaler="0",
         droped_columns=["Timestamp (seconds)"],
         no_encoding_columns=[],
@@ -60,10 +54,9 @@ class DataPreprocessor:
         """A constructor for the DataProcessor class
 
         Args:
-            * data_path (str, optional): The data file name in the working directory or the data file path with the file name used in case the dataset prarameter is not set. Defaults to `""`.
-            * specific_data (str or int, optional): A parameter to define a specific grouping from the UAHdataset used in case the dataset prarameter is not set. Defaults to `None`.
+
+            * data (pandas.DataFrame or array or numpy.array, optional): A dataframe that includes features in columns and a target in one column with a name that match the target provided in the `target_name`. Defaults to `None`.
             * target_name (str, optional): The name of the dataset target as a string. Defaults to `"target"`.
-            * dataset (pandas.DataFrame or array or numpy.array, optional): A dataset that includes features in columns and a target in one column with a name that match the target provided in the `target_name`. Defaults to `None`.
             * scaler (str, optional): selects the scaling technique used as integers from `"0"` to `"8"` passed as strings, or the name of the scaling technique such as `"minmax"` or `"normalizer"`. Defaults to no scaling with the value `"0"`.
             * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `["Timestamp (seconds)"]`.
             * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `[]`.
@@ -78,32 +71,7 @@ class DataPreprocessor:
             * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
         """
         start_time = time.perf_counter()
-        if dataset is None or isinstance(dataset, str):
-            if from_csv is True:
-                if dataset in [
-                    "UAHdataset",
-                    "uahdataset",
-                    "UAHDataset",
-                    "UAHDATASET",
-                    "uah",
-                    "UAH",
-                ]:
-                    self.raw_dataset = self.uahdataset_loading(
-                        data_path, specific=specific_data, verbose=verbose
-                    )
-                else:
-                    try:
-                        self.raw_dataset = pd.read_csv(data_path)
-                        if verbose == 1:
-                            print(
-                                "Reading data from provided path to the data csv file"
-                            )
-                    except Exception:
-                        print("\nError reading data, verify the provided path")
-        elif dataset is not None:
-            self.raw_dataset = dataset
-            if verbose == 1:
-                print("Reading from the dataset argement the provided dataframe")
+        self.raw_dataset = data
         self.filtered_dataset = self.raw_dataset.drop(labels=droped_columns, axis=1)
         self.numeric_dataset = self.filtered_dataset.copy(deep=True)
         for column in self.numeric_dataset.columns:
@@ -134,7 +102,7 @@ class DataPreprocessor:
         )
         self.preprocessed_dataset = self.ml_dataset.copy(deep=True)
         for i in self.target_ohe.columns:
-            column_name = f"target {i}"
+            column_name = f"{target_name} {i}"
             self.preprocessed_dataset[column_name] = self.target_ohe[i]
         self.dl_dataset = self.preprocessed_dataset
         if window_size > 0:
@@ -162,7 +130,7 @@ class DataPreprocessor:
             )
             self.preprocessed_dataset_w = self.ml_dataset_w.copy(deep=True)
             for i in self.target_ohe_w.columns:
-                column_name = f"target {i}"
+                column_name = f"{target_name} {i}"
                 self.preprocessed_dataset_w[column_name] = self.target_ohe_w[i]
             self.dl_dataset_w = self.preprocessed_dataset_w
         if save_dataset == True:
@@ -187,56 +155,6 @@ class DataPreprocessor:
         self.preprocessing_info = self.scaler_name + f"({exec_time})"
 
     @staticmethod
-    def uahdataset_loading(path="", specific=None, verbose=1):
-        """A static method for loading the uahdatset with various configirations.
-
-        Args:
-            * path (str, optional): The path to the dataset, if not provided, the internal dataset will be loaded. Defaults to "".
-            * specific_data (str or int, optional): A parameter to define a specific grouping from the UAHdataset, if an integer used, the function will return the dataset of the driver matching that integer, if `""` or `"secondary road"` will return the data in the secondary road only, the same goes for `"0"` and `"motorway road"` returning the motorway road data only, if `None` the whole dataset is returned.the Defaults to `None`.
-            * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``1``.
-
-        Returns:
-            * pandas.DataFrame: A UAHdataset grouping for time series data
-        """
-        if path == "":
-            DATA_PATH = pkg_resources.resource_filename(
-                __name__, "Datasets/UAH_dataset/dataset/UAHDataset.csv"
-            )
-            print(f"\nloading the internal \033[1mUAHDataset\033[0m from maaml\n")
-            data = pd.read_csv(DATA_PATH)
-        else:
-            try:
-                data = pd.read_csv(path)
-                if verbose == 1:
-                    print("\nUAHDataset read successfully\n")
-            except Exception:
-                print("\nERROR: bad path entry\nEmpty data variable returned")
-                data = []
-                return data
-        if specific is None:
-            data_info = "full data loaded successfully\n"
-        elif str(specific) == "secondary road" or str(specific) == "":
-            data = data.loc[data["road"] == "secondary"]
-            data = data.drop("road", axis=1)
-            data_info = "data of secondary road loaded successfully"
-        elif str(specific) == "motorway road" or str(specific) == "0":
-            data = data.loc[data["road"] == "motorway"]
-            data = data.drop("road", axis=1)
-            data_info = "data of motorway road loaded successfully"
-        elif int(specific) < 7:
-            data = data.loc[data["driver"] == int(specific)]
-            data = data.drop("driver", axis=1)
-            data_info = f"data of driver number {int(specific)} loaded successfully \n"
-        else:
-            print(
-                "ERROR: wrong specific entry or specific entry does not exist\nEmpty data returned "
-            )
-            data = []
-        if verbose == 1:
-            print(data_info)
-        return data
-
-    @staticmethod
     def label_encoding(data, target, verbose=1):
         """A static method to to convert categorical data column to numeric data via label encoding.
 
@@ -249,7 +167,7 @@ class DataPreprocessor:
             * pandas.DataFrame: the data with the cateorical data column converted to numeric data.
         """
         encoder = LabelEncoder()
-        df = pd.DataFrame(data)
+        df = DataFrame(data)
         try:
             if verbose == 1:
                 print(
@@ -283,7 +201,7 @@ class DataPreprocessor:
         scaler = str(scaler)
         if scaler == "0" or scaler == "raw_data":
             scaler_name = "RawData (no scaling)"
-            scaled_df = pd.DataFrame()
+            scaled_df = DataFrame()
             for column in data.columns:
                 scaled_df[column] = data[column].astype("float")
                 scaled_df = scaled_df.reset_index(drop=True)
@@ -320,7 +238,7 @@ class DataPreprocessor:
             scaler_name = "Worning : No scaling (something went wrong)"
             return data, scaler_name
         scaled_df = scalerfunction.fit_transform(scaled_df)
-        scaled_df = pd.DataFrame(scaled_df, columns=columns_names_list)
+        scaled_df = DataFrame(scaled_df, columns=columns_names_list)
         for i in excluded_axis:
             scaled_df[i] = data[i]
         scaled_df = scaled_df.fillna(0)
@@ -378,7 +296,7 @@ class DataPreprocessor:
                 return data
         if verbose == 1:
             print(f"example of the target after One Hot encoding : {encoded[0]}")
-        df = pd.DataFrame(encoded)
+        df = DataFrame(encoded)
         return df
 
     @staticmethod
@@ -403,7 +321,7 @@ class DataPreprocessor:
         Returns:
             * pandas.DataFrame: A window stepped data in case the window was bigger than 0 or the entry dataframe in case window_size is equal to 0.
         """
-        final_data = pd.DataFrame()
+        final_data = DataFrame()
         if len(data) != 0:
             if window_size == 0:
                 final_data = data
@@ -430,7 +348,7 @@ class DataPreprocessor:
 
 if __name__ == "__main__":
     preprocessor = DataPreprocessor(
-        dataset="UAHdataset",
+        data="UAHdataset",
         no_encoding_columns=[],
         scaler=2,
         window_size=60,
