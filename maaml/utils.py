@@ -372,12 +372,12 @@ def window_stepping(
     transformation_fn=lambda x: sum(x) / len(x),
     verbose=1,
 ):
-    """A static method for window stepping a time series data.
+    """A function for window stepping a time series data.
 
     Args:
         * data (pandas.DataFrame, optional): A data array in pandas.DataFrame format. Defaults to `None`.
-        * window_size (int, optional): the size of the window, in case of `None` will not perform the window stepping. Defaults to `None`.
-        * step (int, optional): The length of the step,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
+        * window_size (int, optional): the size of the window, in case of `None` will not perform the window stepping and will raise ValueError. Defaults to `None`.
+        * step (int, optional): The length of the step,if `None` will not perform the window stepping and will raise ValueError, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
         * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
         * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
         * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
@@ -389,17 +389,13 @@ def window_stepping(
     if len(data) != 0:
         if (window_size is not None) and (step is not None):
             if window_size == 0 or step == 0:
-                if verbose == 1:
-                    print(
-                        "\nATTENTION: No window stepping,one or both of window_size and step is set to 0."
-                    )
-                return data
+                raise ValueError(
+                    "Window stepping is not possible,one or both of window_size and step is set to 0."
+                )
             elif step >= len(data) or window_size >= len(data):
-                if verbose == 1:
-                    print(
-                        "\nATTENTION: No window stepping,one or both window_size and step length is the same or bigger as data length."
-                    )
-                return data
+                raise ValueError(
+                    "Window stepping is not possible,The length of one or both window_size and step parameters is the same or bigger than the data length."
+                )
             else:
                 final_data = DataFrame()
                 for i in range(0, len(data) - 1, step):
@@ -422,7 +418,9 @@ def window_stepping(
                             f"\nWindow stepping applied with window size: {window_size} and step : {step} ."
                         )
         else:
-            return data
+            raise ValueError(
+                "Window stepping is not possible,one or both of window_size and step is not set."
+            )
     else:
         raise ValueError("Empty data entry")
     return final_data
