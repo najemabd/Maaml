@@ -581,19 +581,20 @@ class UAHDatasetLoader:
             raise ValueError("read_from is unavailable or an Unkown format.")
         if path is None:
             path = pkg_resources.resource_filename(
-                __name__, f"Datasets/UAH_dataset/dataset/UAHDataset.{read_from}"
+                __name__, f"dataset/UAHDataset.{read_from}"
             )
-            print(f"\nloading the internal \033[1mUAHDataset\033[0m from maaml\n")
+            print(path)
+            print(f"\nLoading the internal \033[1mUAHDataset\033[0m from maaml\n")
         if read_from == "csv":
             try:
-                self.data = read_csv(path, verbose=verbose)
+                self.data = read_csv(path, delimiter=",", header=0, verbose=verbose)
             except Exception:
-                print("\nError reading data, verify the provided path")
+                raise ValueError("Error reading data, verify the provided path")
         elif read_from == "parquet":
             try:
                 self.data = read_parquet(path, verbose=verbose)
             except Exception:
-                raise ValueError("\nError reading data, verify the provided path")
+                raise ValueError("Error reading parquet data, verify the provided path")
         if specific_section is None:
             data_info = "full data loaded successfully\n"
         elif str(specific_section) == "secondary road" or str(specific_section) == "":
@@ -636,5 +637,3 @@ if __name__ == "__main__":
         step_dt2=10,
         verbose=2,
     )
-
-# %%
