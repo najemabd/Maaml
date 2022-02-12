@@ -159,6 +159,20 @@ class DataCleaner:
                     return data
                 else:
                     final_data = DataFrame()
+                    for i in range(0, len(data) - 1, step):
+                        window_segment = data[i : i + window_size]
+                        if window_transformation is True:
+                            try:
+                                window_segment = window_segment.apply(
+                                    transformation_fn, axis=0
+                                )
+                            except TypeError:
+                                raise TypeError(
+                                    "\033[1mCan not apply window_transformation function, the function does not conform with the data types.\033[0m"
+                                )
+                        final_data = final_data.append(
+                            window_segment, ignore_index=True
+                        )
                     if verbose == 1:
                         if window_transformation is True:
                             print("\n\033[1mWindow transformation applied.\033[0m")
@@ -166,15 +180,6 @@ class DataCleaner:
                             print(
                                 f"\nWindow stepping applied with window size: {window_size} and step : {step} ."
                             )
-                    for i in range(0, len(data) - 1, step):
-                        window_segment = data[i : i + window_size]
-                        if window_transformation is True:
-                            window_segment = window_segment.apply(
-                                transformation_fn, axis=0
-                            )
-                        final_data = final_data.append(
-                            window_segment, ignore_index=True
-                        )
             else:
                 return data
         else:
@@ -400,6 +405,7 @@ if __name__ == "__main__":
         },
         window_size=5,
         step=2,
+        window_transformation=False,
         drop_duplicates=True,
         add_columns_dictionnary={"axis_origin": [12, 4, 5, 7, 5, 8, 2, 5, 4]},
         save_to=None,
