@@ -149,7 +149,11 @@ def read_csv(path, delimiter=" ", header=None, verbose=0, prompt=None):
     Returns:
         * pandas.DataFrame: A pandas dataframe of the read file.
     """
-    df_csv = pd.read_table(path, header=header, delimiter=delimiter)
+    try:
+        df_csv = pd.read_table(path, header=header, delimiter=delimiter)
+    except FileNotFoundError:
+        path = path + ".csv"
+        df_csv = pd.read_table(path, header=header, delimiter=delimiter)
     if verbose > 0:
         if prompt is None:
             print(f"\n\033[1mLoading dataframe from csv file in:\n{path} \033[0m\n")
@@ -170,7 +174,11 @@ def read_parquet(path, verbose=0, prompt=None):
     Returns:
         * pandas.DataFrame: A pandas dataframe of the read file.
     """
-    df_parquet = pd.read_parquet(path)
+    try:
+        df_parquet = pd.read_parquet(path)
+    except FileNotFoundError:
+        path = path + "parquet"
+        df_parquet = pd.read_parquet(path)
     if verbose > 0:
         if prompt is None:
             print(f"\n\033[1mLoading dataframe from parquet file in:\n{path} \033[0m\n")
@@ -354,6 +362,70 @@ def pattern_search(pattern, local_set, error_message, global_set=None):
         return matching_result_set
     else:
         raise ValueError(error_message)
+
+
+def window_stepping(
+    data=None,
+    window_size: int = None,
+    step: int = None,
+    window_transformation=False,
+    transformation_fn=lambda x: sum(x) / len(x),
+    verbose=1,
+):
+    """A static method for window stepping a time series data.
+
+    Args:
+        * data (pandas.DataFrame, optional): A data array in pandas.DataFrame format. Defaults to `None`.
+        * window_size (int, optional): the size of the window, in case of `None` will not perform the window stepping. Defaults to `None`.
+        * step (int, optional): The length of the step,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
+        * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
+        * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
+        * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
+
+    Returns:
+        * pandas.DataFrame: A window stepped data in case the window was bigger than 0 or the entry dataframe in case window_size is equal to 0.
+    """
+    data = DataFrame(data)
+    if len(data) != 0:
+        if (window_size is not None) and (step is not None):
+            if window_size == 0 or step == 0:
+                if verbose == 1:
+                    print(
+                        "\nATTENTION: No window stepping,one or both of window_size and step is set to 0."
+                    )
+                return data
+            elif step >= len(data) or window_size >= len(data):
+                if verbose == 1:
+                    print(
+                        "\nATTENTION: No window stepping,one or both window_size and step length is the same or bigger as data length."
+                    )
+                return data
+            else:
+                final_data = DataFrame()
+                for i in range(0, len(data) - 1, step):
+                    window_segment = data[i : i + window_size]
+                    if window_transformation is True:
+                        try:
+                            window_segment = window_segment.apply(
+                                transformation_fn, axis=0
+                            )
+                        except TypeError:
+                            raise TypeError(
+                                "\033[1mCan not apply window_transformation function, the function does not conform with the data types.\033[0m"
+                            )
+                    final_data = final_data.append(window_segment, ignore_index=True)
+                if verbose == 1:
+                    if window_transformation is True:
+                        print("\n\033[1mWindow transformation applied.\033[0m")
+                    else:
+                        print(
+                            f"\nWindow stepping applied with window size: {window_size} and step : {step} ."
+                        )
+        else:
+            return data
+    else:
+        raise ValueError("Empty data entry")
+    return final_data
 
 
 if __name__ == "__main__":
