@@ -21,14 +21,13 @@ class DataPreprocessor:
     * data (pandas.DataFrame or array or numpy.array, optional): A dataframe that includes features in columns and a target in one column with a name that match the target provided in the `target_name`. Defaults to `None`.
     * target_name (str, optional): The name of the dataset target as a string. Defaults to `"target"`.
     * scaler (str, optional): selects the scaling technique used as integers from `"0"` to `"8"` passed as strings, or the name of the scaling technique such as `"minmax"` or `"normalizer"`. Defaults to no scaling with the value `"0"`.
-    * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `["Timestamp (seconds)"]`.
+    * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `[]`.
     * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `[]`.
-    * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `["target"]`.
+    * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `[]`.
     * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `0` will not perform the window stepping. Defaults to `0`.
     * step (int, optional): The length of the step for window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `0`.
     * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
     * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
-    * from_csv (bool, optional): Specifies if the data loaded from data_path is a csv file or not. Defaults to `True`.
     * save_dataset (bool, optional): saves in a newly created directory under the working directory in the case of `True`, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied. Defaults to `False`.
     * save_tag (str, optional): add a custom tag to the name of the files to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
     * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
@@ -39,14 +38,13 @@ class DataPreprocessor:
         data=None,
         target_name="target",
         scaler="0",
-        droped_columns=["Timestamp (seconds)"],
+        droped_columns=[],
         no_encoding_columns=[],
-        no_scaling_columns=["target"],
+        no_scaling_columns=[],
         window_size=0,
         step=0,
         window_transformation=False,
         window_transformation_function=lambda x: sum(x) / len(x),
-        from_csv=True,
         save_dataset=False,
         save_tag="dataset",
         verbose=0,
@@ -58,14 +56,13 @@ class DataPreprocessor:
             * data (pandas.DataFrame or array or numpy.array, optional): A dataframe that includes features in columns and a target in one column with a name that match the target provided in the `target_name`. Defaults to `None`.
             * target_name (str, optional): The name of the dataset target as a string. Defaults to `"target"`.
             * scaler (str, optional): selects the scaling technique used as integers from `"0"` to `"8"` passed as strings, or the name of the scaling technique such as `"minmax"` or `"normalizer"`. Defaults to no scaling with the value `"0"`.
-            * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `["Timestamp (seconds)"]`.
+            * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `[]`.
             * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `[]`.
-            * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `["target"]`.
+            * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `[]`.
             * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `0` will not perform the window stepping. Defaults to `0`.
             * step (int, optional): The length of the step for window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `0`.
             * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
             * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
-            * from_csv (bool, optional): Specifies if the data loaded from data_path is a csv file or not. Defaults to `True`.
             * save_dataset (bool, optional): saves in a newly created directory under the working directory in the case of `True`, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied. Defaults to `False`.
             * save_tag (str, optional): add a custom tag to the name of the files to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
             * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
@@ -88,6 +85,11 @@ class DataPreprocessor:
                     self.numeric_dataset = self.label_encoding(
                         self.numeric_dataset, target=column, verbose=verbose
                     )
+        if target_name not in no_scaling_columns:
+            no_scaling_columns = no_scaling_columns.append(target_name)
+            print(
+                f"Automatically adding the target_name column '{target_name}' to the no_scaling_columns."
+            )
         self.scaled_dataset, self.scaler_name = self.data_scaling(
             self.numeric_dataset,
             excluded_axis=no_scaling_columns,
@@ -347,9 +349,12 @@ class DataPreprocessor:
 
 
 if __name__ == "__main__":
+    from maaml.Datasets.UAH_dataset.time_series import UAHDatasetLoader
+
+    raw = UAHDatasetLoader()
     preprocessor = DataPreprocessor(
-        data="UAHdataset",
-        no_encoding_columns=[],
+        data=raw.data,
+        droped_columns=["Timestamp (seconds)"],
         scaler=2,
         window_size=60,
         step=10,

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "maaml"
-version = "0.4.5"
+version = "0.4.6"
 description = "For time series datasets Machine learning pipline"
 authors = ["Najemeddine Abdennour"]
 license = "GNU General Public License v3 (GPLv3)"
