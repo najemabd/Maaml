@@ -59,10 +59,10 @@ class UahDatasetPathFinder:
             * ValueError: In the case of wrong argement type or entry, with a description for the reason.
         """
         file_error_msg = (
-            "please give a correct data_type from the files available for the dataset"
+            "Please give a correct data_type from the files available for the dataset."
         )
         numeric_file_error_msg = (
-            "please give the correct number of the file, only 9 file available"
+            "Please give the correct number of the file, only 9 file available."
         )
         data_type = self.numeric_to_string_from_list(
             data_type, self.SENSOR_FILES, numeric_file_error_msg
@@ -90,7 +90,7 @@ class UahDatasetPathFinder:
                 else int(driver[-1])
             )
             driver_error_msg = (
-                "please give a correct driver number, only 6 drivers available."
+                "Please give a correct driver number, only 6 drivers available."
             )
             driver_name = f"D{driver}"
             self.driver = driver_name
@@ -100,36 +100,36 @@ class UahDatasetPathFinder:
                     f"\033[1mdriver {driver_name} has {len(driver_paths)} diffrent paths\033[0m"
                 )
             numeric_state_error_msg = (
-                "please give the correct driving state number, only 3 states available."
+                "Please give the correct driving state number, only 3 states available."
             )
             state = self.numeric_to_string_from_list(
                 state, self.STATES, error_msg=numeric_state_error_msg
             )
-            state_error_msg = f"\nplease give driving state number or give the correct driving state from:\n{self.STATES}"
+            state_error_msg = f"\nPlease give driving state number or give the correct driving state from:\n{self.STATES}"
             self.state = pattern_search(
                 state.upper(), self.STATES, state_error_msg
             ).pop()
             state_paths = pattern_search(self.state, driver_paths, state_error_msg)
             numeric_road_error_msg = (
-                "please give the correct road number, only 2 roads available."
+                "Please give the correct road number, only 2 roads available."
             )
             road = self.numeric_to_string_from_list(
                 road, self.ROADS, numeric_road_error_msg
             )
-            road_error_msg = f"\nplease give road number or give the correct road name from:\n{self.ROADS}"
+            road_error_msg = f"\nPlease give road number or give the correct road name from:\n{self.ROADS}"
             self.road = pattern_search(road.upper(), self.ROADS, road_error_msg).pop()
             road_paths = pattern_search(self.road, state_paths, road_error_msg)
             road_paths = list(road_paths)
             if len(road_paths) > 1 and verbose == 2:
                 print(
-                    f"\nThere is more than one path for this case,the selection depended on the standard parameter"
+                    f"\nThere is more than one path for this case,the selection depended on the standard parameter."
                 )
             if standard:
                 try:
                     self.file_path = road_paths[0]
                 except IndexError:
                     raise ValueError(
-                        "driver 6 does not have data for state: AGGRESSIVE and road: SECONDARY"
+                        "Driver 6 does not have data for state: AGGRESSIVE and road: SECONDARY ."
                     )
             elif not standard:
                 try:
@@ -578,23 +578,22 @@ class UAHDatasetLoader:
         if read_from is None:
             read_from = "csv"
         elif read_from != "csv" and read_from != "parquet":
-            raise ValueError("read_from is unavailable or an Unkown format.")
+            raise ValueError("read_from parameter is unavailable or an Unkown format.")
         if path is None:
             path = pkg_resources.resource_filename(
                 __name__, f"dataset/UAHDataset.{read_from}"
             )
-            print(path)
             print(f"\nLoading the internal \033[1mUAHDataset\033[0m from maaml\n")
         if read_from == "csv":
             try:
                 self.data = read_csv(path, delimiter=",", header=0, verbose=verbose)
             except Exception:
-                raise ValueError("Error reading data, verify the provided path")
+                raise ValueError("Verify the provided path.")
         elif read_from == "parquet":
             try:
                 self.data = read_parquet(path, verbose=verbose)
             except Exception:
-                raise ValueError("Error reading parquet data, verify the provided path")
+                raise ValueError("Verify the provided path for the parquet file.")
         if specific_section is None:
             data_info = "full data loaded successfully\n"
         elif str(specific_section) == "secondary road" or str(specific_section) == "":
@@ -612,9 +611,7 @@ class UAHDatasetLoader:
                 f"data of driver number {int(specific_section)} loaded successfully \n"
             )
         else:
-            raise ValueError(
-                "ERROR: wrong specific entry or specific entry does not exist\nEmpty data returned "
-            )
+            raise ValueError("Wrong specific_section entry.")
         if verbose == 1:
             print(data_info)
 
