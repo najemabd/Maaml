@@ -164,7 +164,7 @@ class DataCleaner:
                             print("\n\033[1mWindow transformation applied.\033[0m")
                         else:
                             print(
-                                f"\nwindow stepping applied with window size: {window_size} and step : {step} ."
+                                f"\nWindow stepping applied with window size: {window_size} and step : {step} ."
                             )
                     for i in range(0, len(data) - 1, step):
                         window_segment = data[i : i + window_size]
@@ -178,7 +178,7 @@ class DataCleaner:
             else:
                 return data
         else:
-            print("ERROR: Empty data entry.")
+            raise ValueError("Empty data entry")
         return final_data
 
     @staticmethod
@@ -248,11 +248,9 @@ class DataCleaner:
                 )
                 print("\033[1m", "******* DATA SUCCESSFULLY MERGED *******", "\033[0m")
         except Exception:
-            print(
-                "ERROR: empty data entries or one data entry or both do not have Timestamp column, \nplease renter your two dataframes and check their columns before entry "
+            raise ValueError(
+                f"One empty data entry or more or {timestamp_column} exists in one dataframe and not the other."
             )
-            print("\nEmpty data returned")
-            data_merged = None
         return data_merged
 
     @staticmethod
@@ -269,6 +267,7 @@ class DataCleaner:
         Returns:
             * pandas.DataFrame: A pandas.DataFrame with filled missing values.
         """
+        data = DataFrame(data)
         try:
             if verbose == 1:
                 print(
@@ -281,7 +280,6 @@ class DataCleaner:
                 missing_values = missing_values.interpolate(method="cubic", limit=3)
                 data_interpolated = data.copy(deep=True)
                 data_interpolated[missing_values.columns] = missing_values
-                # data_interpolated = data
                 if verbose == 1:
                     print(
                         f"\n    State after interpolation    \nCOLUMNS                   NUMBER OF RAWS WITH MISSING DATA\n{data_interpolated.isnull().sum()}\n"
@@ -291,10 +289,7 @@ class DataCleaner:
                 if verbose == 1:
                     print("\n   Interpolation not needed    \n")
         except Exception:
-            data_interpolated = None
-            print(
-                f"\nERROR: empty data entry or non dataframe type\nEmpty data returned"
-            )
+            raise ValueError("Empty data entry")
         return data_interpolated
 
     @staticmethod
@@ -308,13 +303,14 @@ class DataCleaner:
         Returns:
             * pandas.DataFrame: a dataframe with no missing or Nan/ Na/ None values.
         """
+        data = DataFrame(data)
         try:
             if verbose == 1:
                 print(
                     f"\n    Data count before removing any rows :     \n{data.count()}"
                 )
                 print(
-                    "\nis there any missing data values? :",
+                    "\nIs there any missing data values? :",
                     "\033[1m",
                     data.isnull().values.any(),
                     "\033[0m",
@@ -330,10 +326,7 @@ class DataCleaner:
                     "\033[0m",
                 )
         except Exception:
-            print(
-                "ERROR: empty data entry or non dataframe type, please enter your data dataframe\nEmpty data returned"
-            )
-            data = []
+            raise ValueError("Empty data entry.")
         return data
 
     @staticmethod
