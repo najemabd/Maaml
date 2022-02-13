@@ -8,7 +8,7 @@ from sklearn.preprocessing import (
     PowerTransformer,
     Normalizer,
 )
-from maaml.utils import save_csv, DataFrame
+from maaml.utils import save_csv, DataFrame, window_stepping
 import time
 
 
@@ -21,11 +21,11 @@ class DataPreprocessor:
     * data (pandas.DataFrame or array or numpy.array, optional): A dataframe that includes features in columns and a target in one column with a name that match the target provided in the `target_name`. Defaults to `None`.
     * target_name (str, optional): The name of the dataset target as a string. Defaults to `"target"`.
     * scaler (str, optional): selects the scaling technique used as integers from `"0"` to `"8"` passed as strings, or the name of the scaling technique such as `"minmax"` or `"normalizer"`. Defaults to no scaling with the value `"0"`.
-    * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `[]`.
-    * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `[]`.
-    * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `[]`.
-    * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `0` will not perform the window stepping. Defaults to `0`.
-    * step (int, optional): The length of the step for window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `0`.
+    * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `None`.
+    * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `None`.
+    * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `None`.
+    * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `None` will not perform the window stepping. Defaults to `None`.
+    * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
     * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
     * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
     * save_dataset (bool, optional): saves in a newly created directory under the working directory in the case of `True`, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied. Defaults to `False`.
@@ -38,11 +38,11 @@ class DataPreprocessor:
         data=None,
         target_name="target",
         scaler="0",
-        droped_columns=[],
-        no_encoding_columns=[],
-        no_scaling_columns=[],
-        window_size=0,
-        step=0,
+        droped_columns=None,
+        no_encoding_columns=None,
+        no_scaling_columns=None,
+        window_size=None,
+        step=None,
         window_transformation=False,
         window_transformation_function=lambda x: sum(x) / len(x),
         save_dataset=False,
@@ -56,11 +56,11 @@ class DataPreprocessor:
             * data (pandas.DataFrame or array or numpy.array, optional): A dataframe that includes features in columns and a target in one column with a name that match the target provided in the `target_name`. Defaults to `None`.
             * target_name (str, optional): The name of the dataset target as a string. Defaults to `"target"`.
             * scaler (str, optional): selects the scaling technique used as integers from `"0"` to `"8"` passed as strings, or the name of the scaling technique such as `"minmax"` or `"normalizer"`. Defaults to no scaling with the value `"0"`.
-            * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `[]`.
-            * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `[]`.
-            * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `[]`.
-            * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `0` will not perform the window stepping. Defaults to `0`.
-            * step (int, optional): The length of the step for window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `0`.
+            * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `None`.
+            * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `None`.
+            * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `None`.
+            * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `None` will not perform the window stepping. Defaults to `None`.
+            * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
             * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
             * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
             * save_dataset (bool, optional): saves in a newly created directory under the working directory in the case of `True`, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied. Defaults to `False`.
@@ -68,27 +68,30 @@ class DataPreprocessor:
             * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
         """
         start_time = time.perf_counter()
-        self.raw_dataset = data
+        self.raw_dataset = DataFrame(data)
+        droped_columns = [] if droped_columns is None else droped_columns
         self.filtered_dataset = self.raw_dataset.drop(labels=droped_columns, axis=1)
+        no_encoding_columns = [] if no_encoding_columns is None else no_encoding_columns
         self.numeric_dataset = self.filtered_dataset.copy(deep=True)
         for column in self.numeric_dataset.columns:
-            if (
-                self.numeric_dataset.dtypes[column] != float
-                and self.numeric_dataset.dtypes[column] != int
-            ):
-                if column in no_encoding_columns:
-                    if verbose == 1:
-                        print(
-                            f"skipping \033[1m{column}\033[0m label encoding for being in the no_encoding_columns"
-                        )
-                else:
+            if column in no_encoding_columns:
+                if verbose == 1:
+                    print(
+                        f"skipping \033[1m{column}\033[0m label encoding for being in the no_encoding_columns"
+                    )
+            else:
+                if (
+                    self.numeric_dataset.dtypes[column] != float
+                    and self.numeric_dataset.dtypes[column] != int
+                ):
                     self.numeric_dataset = self.label_encoding(
                         self.numeric_dataset, target=column, verbose=verbose
                     )
+        no_scaling_columns = [] if no_scaling_columns is None else no_scaling_columns
         if target_name not in no_scaling_columns:
-            no_scaling_columns = no_scaling_columns.append(target_name)
+            no_scaling_columns.append(target_name)
             print(
-                f"Automatically adding the target_name column '{target_name}' to the no_scaling_columns."
+                f"\033[1mAutomatically adding the target_name column '{target_name}' to the no_scaling_columns.\033[0m"
             )
         self.scaled_dataset, self.scaler_name = self.data_scaling(
             self.numeric_dataset,
@@ -107,54 +110,56 @@ class DataPreprocessor:
             column_name = f"{target_name} {i}"
             self.preprocessed_dataset[column_name] = self.target_ohe[i]
         self.dl_dataset = self.preprocessed_dataset
-        if window_size > 0:
-            if verbose == 1:
-                print(
-                    "\n\033[1mThe window stepping can take some time depending on the dataset \033[0m"
-                )
-            self.windowed_dataset = self.ml_dataset.copy(deep=True)
-            self.windowed_dataset = self.window_stepping(
-                self.windowed_dataset,
-                window_size=window_size,
-                step=step,
-                window_transformation=window_transformation,
-                transformation_fn=window_transformation_function,
-                verbose=verbose,
-            )
-            self.ml_dataset_w = self.windowed_dataset
-            self.features_w = self.ml_dataset_w.drop(target_name, axis=1)
-            if window_transformation == True:
-                self.target_w = self.ml_dataset_w[target_name].round()
-            else:
-                self.target_w = self.ml_dataset_w[target_name]
-            self.target_ohe_w = self.one_hot_encoding(
-                self.target_w, target=target_name, verbose=verbose
-            )
-            self.preprocessed_dataset_w = self.ml_dataset_w.copy(deep=True)
-            for i in self.target_ohe_w.columns:
-                column_name = f"{target_name} {i}"
-                self.preprocessed_dataset_w[column_name] = self.target_ohe_w[i]
-            self.dl_dataset_w = self.preprocessed_dataset_w
         if save_dataset == True:
             PATH = "preprocessed_dataset"
             save_csv(self.ml_dataset, PATH, f"ml_{save_tag}", verbose=verbose)
             save_csv(self.dl_dataset, PATH, f"dl_{save_tag}", verbose=verbose)
-            if window_size > 0:
-                save_csv(
-                    self.ml_dataset_w,
-                    PATH,
-                    f"ml_{save_tag}_w({window_size})_s({step})",
-                    verbose=verbose,
-                )
-                save_csv(
-                    self.dl_dataset_w,
-                    PATH,
-                    f"dl_{save_tag}_w({window_size})_s({step})",
-                    verbose=verbose,
-                )
-        self.preprocessing_time = f"{(time.perf_counter() - start_time):.2f} (s)"
-        exec_time = self.preprocessing_time.replace("(", "").replace(")", "")
-        self.preprocessing_info = self.scaler_name + f"({exec_time})"
+        if verbose == 1:
+            print(
+                "\n\033[1mThe window stepping can take some time depending on the dataset \033[0m"
+            )
+        self.windowed_dataset = self.ml_dataset.copy(deep=True)
+        self.windowed_dataset = window_stepping(
+            self.windowed_dataset,
+            window_size=window_size,
+            step=step,
+            window_transformation=window_transformation,
+            transformation_fn=window_transformation_function,
+            verbose=verbose,
+        )
+        self.ml_dataset_w = self.windowed_dataset
+        self.features_w = self.ml_dataset_w.drop(target_name, axis=1)
+        if window_transformation == True:
+            self.target_w = self.ml_dataset_w[target_name].round()
+        else:
+            self.target_w = self.ml_dataset_w[target_name]
+        self.target_ohe_w = self.one_hot_encoding(
+            self.target_w, target=target_name, verbose=verbose
+        )
+        self.preprocessed_dataset_w = self.ml_dataset_w.copy(deep=True)
+        for i in self.target_ohe_w.columns:
+            column_name = f"{target_name} {i}"
+            self.preprocessed_dataset_w[column_name] = self.target_ohe_w[i]
+        self.dl_dataset_w = self.preprocessed_dataset_w
+        if save_dataset == True:
+            save_csv(
+                self.ml_dataset_w,
+                PATH,
+                f"ml_{save_tag}_w({window_size})_s({step})",
+                verbose=verbose,
+            )
+            save_csv(
+                self.dl_dataset_w,
+                PATH,
+                f"dl_{save_tag}_w({window_size})_s({step})",
+                verbose=verbose,
+            )
+        self.exec_time = time.perf_counter() - start_time
+        self.preprocessing_info = self.scaler_name + f"({self.exec_time:.2f} s)"
+        if verbose == 1:
+            print(
+                f"\n\033[1m========= DATA PREPROCESSED SUCCESSFULLY [ ET: {self.exec_time:.2f} (s) ] =========\033[0m\n"
+            )
 
     @staticmethod
     def label_encoding(data, target, verbose=1):
@@ -168,9 +173,10 @@ class DataPreprocessor:
         Returns:
             * pandas.DataFrame: the data with the cateorical data column converted to numeric data.
         """
-        encoder = LabelEncoder()
+        data = DataFrame(data)
         df = DataFrame(data)
-        try:
+        encoder = LabelEncoder()
+        if target in data.columns:
             if verbose == 1:
                 print(
                     f"encoding the \033[1m{target}\033[0m column. The target labels are: {data[target].unique()} "
@@ -178,11 +184,9 @@ class DataPreprocessor:
             df[target] = encoder.fit_transform(data[target])
             if verbose == 1:
                 print(f"The target labels after encoding : {df[target].unique()}")
-        except Exception:
-            print(
-                f"ERROR: the column name '{target}' is not available in data\nno label encoding realized for this target\n"
-            )
-        return data
+        else:
+            raise KeyError(f"The target column '{target}' does not exist in data")
+        return df
 
     @staticmethod
     def data_scaling(data, excluded_axis=[], scaler="minmax", verbose=1):
@@ -197,7 +201,8 @@ class DataPreprocessor:
         Returns:
             * tuple: (pandas.DataFrame,str) A scaled pandas.DataFrame Data and the name of the scaling technique used as string.
         """
-        scaled_df = data
+        data = DataFrame(data)
+        scaled_df = DataFrame(data)
         scaled_df = scaled_df.drop(excluded_axis, axis=1)
         columns_names_list = scaled_df.columns
         scaler = str(scaler)
@@ -278,6 +283,7 @@ class DataPreprocessor:
         Returns:
             * pandas.DataFrame: the target column converted to binary format in a pandas.DataFrame with the number of columns corresponds to the unique values of the target column.
         """
+        data = DataFrame(data)
         encoder = OneHotEncoder()
         try:
             if verbose == 1:
@@ -291,61 +297,11 @@ class DataPreprocessor:
                     print(f"One Hot Encoder target: {data.unique()}")
                 encoded = encoder.fit_transform(data.values.reshape(-1, 1)).toarray()
             except Exception:
-                if verbose == 1:
-                    print(
-                        f"ERROR: target name '{target}' is not available in data\nNo One hot encoding realized"
-                    )
-                return data
+                raise KeyError(f"target name '{target}' is not available in data")
         if verbose == 1:
             print(f"example of the target after One Hot encoding : {encoded[0]}")
         df = DataFrame(encoded)
         return df
-
-    @staticmethod
-    def window_stepping(
-        data=None,
-        window_size=0,
-        step=0,
-        window_transformation=False,
-        transformation_fn=lambda x: sum(x) / len(x),
-        verbose=1,
-    ):
-        """A static method for window stepping a time series data.
-
-        Args:
-            * data (pandas.DataFrame, optional): A data array in pandas.DataFrame format. Defaults to `None`.
-            * window_size (int, optional): the size of the window, in case of `0` will not perform the window stepping. Defaults to `0`.
-            * step (int, optional): The length of the step, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `0`.
-            * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
-            * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
-            * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
-
-        Returns:
-            * pandas.DataFrame: A window stepped data in case the window was bigger than 0 or the entry dataframe in case window_size is equal to 0.
-        """
-        final_data = DataFrame()
-        if len(data) != 0:
-            if window_size == 0:
-                final_data = data
-                if verbose == 1:
-                    print("\nATTENTION: Entry data returned without window stepping")
-                return final_data
-            else:
-                if verbose == 1:
-                    if window_transformation is True:
-                        print("\n\033[1mWindow transformation applied\033[0m")
-                    else:
-                        print(
-                            f"\nwindow stepping applied with window size: {window_size} and step : {step}"
-                        )
-                for i in range(0, len(data) - 1, step):
-                    window_segment = data[i : i + window_size]
-                    if window_transformation is True:
-                        window_segment = window_segment.apply(transformation_fn, axis=0)
-                    final_data = final_data.append(window_segment, ignore_index=True)
-        else:
-            print("ERROR: Empty data entry")
-        return final_data
 
 
 if __name__ == "__main__":
@@ -355,10 +311,12 @@ if __name__ == "__main__":
     preprocessor = DataPreprocessor(
         data=raw.data,
         droped_columns=["Timestamp (seconds)"],
+        no_encoding_columns=None,
+        no_scaling_columns=None,
         scaler=2,
         window_size=60,
         step=10,
-        window_transformation=True,
+        window_transformation=False,
         window_transformation_function=lambda x: sum(x) / len(x),
         save_dataset=False,
         verbose=1,
@@ -381,5 +339,4 @@ if __name__ == "__main__":
     print(
         f"\nthe full windowed preprocessed dataset is: \n{preprocessor.preprocessed_dataset_w}"
     )
-    print(f"\nthe preprocessing time is : {preprocessor.preprocessing_time}")
     print(f"\npreprocessing info : {preprocessor.preprocessing_info}")
