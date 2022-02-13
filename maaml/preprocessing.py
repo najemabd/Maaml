@@ -8,7 +8,7 @@ from sklearn.preprocessing import (
     PowerTransformer,
     Normalizer,
 )
-from maaml.utils import save_csv, DataFrame, window_stepping
+from maaml.utils import save_csv, DataFrame, window_stepping, save_parquet
 import time
 
 
@@ -28,8 +28,7 @@ class DataPreprocessor:
     * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
     * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
     * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
-    * save_dataset (bool, optional): saves in a newly created directory under the working directory in the case of `True`, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied. Defaults to `False`.
-    * save_tag (str, optional): add a custom tag to the name of the files to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
+    * save_to (str, optional): Can be `"csv"` or `"parquet"` or `None` if set to `"csv"` or `"parquet"` will save to the corresponding format in a newly created directory under the working directory, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied, if set to `None` will not save anything. Defaults to `None`.    * save_tag (str, optional): add a custom tag to the name of the files to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
     * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
     """
 
@@ -45,7 +44,7 @@ class DataPreprocessor:
         step=None,
         window_transformation=False,
         window_transformation_function=lambda x: sum(x) / len(x),
-        save_dataset=False,
+        save_to=None,
         save_tag="dataset",
         verbose=0,
     ):
@@ -63,7 +62,7 @@ class DataPreprocessor:
             * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
             * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
             * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
-            * save_dataset (bool, optional): saves in a newly created directory under the working directory in the case of `True`, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied. Defaults to `False`.
+            * save_to (str, optional): Can be `"csv"` or `"parquet"` or `None` if set to `"csv"` or `"parquet"` will save to the corresponding format in a newly created directory under the working directory, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied, if set to `None` will not save anything. Defaults to `None`.
             * save_tag (str, optional): add a custom tag to the name of the files to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
             * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
         """
@@ -110,10 +109,13 @@ class DataPreprocessor:
             column_name = f"{target_name} {i}"
             self.preprocessed_dataset[column_name] = self.target_ohe[i]
         self.dl_dataset = self.preprocessed_dataset
-        if save_dataset == True:
-            PATH = "preprocessed_dataset"
+        PATH = "preprocessed_dataset"
+        if save_to == "csv":
             save_csv(self.ml_dataset, PATH, f"ml_{save_tag}", verbose=verbose)
             save_csv(self.dl_dataset, PATH, f"dl_{save_tag}", verbose=verbose)
+        if save_to == "parquet":
+            save_parquet(self.ml_dataset, PATH, f"ml_{save_tag}", verbose=verbose)
+            save_parquet(self.dl_dataset, PATH, f"dl_{save_tag}", verbose=verbose)
         if verbose == 1:
             print(
                 "\n\033[1mThe window stepping can take some time depending on the dataset \033[0m"
@@ -141,7 +143,7 @@ class DataPreprocessor:
             column_name = f"{target_name} {i}"
             self.preprocessed_dataset_w[column_name] = self.target_ohe_w[i]
         self.dl_dataset_w = self.preprocessed_dataset_w
-        if save_dataset == True:
+        if save_to == "csv":
             save_csv(
                 self.ml_dataset_w,
                 PATH,
@@ -149,6 +151,19 @@ class DataPreprocessor:
                 verbose=verbose,
             )
             save_csv(
+                self.dl_dataset_w,
+                PATH,
+                f"dl_{save_tag}_w({window_size})_s({step})",
+                verbose=verbose,
+            )
+        if save_to == "parquet":
+            save_parquet(
+                self.ml_dataset_w,
+                PATH,
+                f"ml_{save_tag}_w({window_size})_s({step})",
+                verbose=verbose,
+            )
+            save_parquet(
                 self.dl_dataset_w,
                 PATH,
                 f"dl_{save_tag}_w({window_size})_s({step})",
@@ -318,7 +333,7 @@ if __name__ == "__main__":
         step=10,
         window_transformation=False,
         window_transformation_function=lambda x: sum(x) / len(x),
-        save_dataset=False,
+        save_to=False,
         verbose=1,
     )
     print(f"\nthe raw dataset is: \n{preprocessor.raw_dataset}")
