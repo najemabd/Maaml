@@ -1,4 +1,4 @@
-from maaml.utils import DataFrame, save_csv, save_parquet, window_stepping
+from maaml.utils import DataFrame, save_csv, save_parquet, window_stepping, columns_mean
 import time
 
 
@@ -12,8 +12,8 @@ class DataCleaner:
     * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
     * drop_duplicates (bool, optional): if `True` removes the duplicate values using the Timestamp column as refrence. Defaults to `True`.
     * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
-    * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
-    * add_columns_dictionnary (dict, optional): A dictionnary of keys (column names) and values to be added to the array or the pandas.DataFrame, if set to `None` will skip adding data. Defaults to `None`.
+    * transformation_fn (function, optional): A function to be applied to the window, it takes the window dataframe as argument. Defaults to applying mean mean values on the columns with: `columns_mean`.
+    * transformation_kwargs (dict,optional): A dictionary of keyword arguments (function arguments names and their values) specific to the function introduced in the transformation_fn, if not set will not pass any arguments to the function.Defaults to `None`.    * add_columns_dictionnary (dict, optional): A dictionnary of keys (column names) and values to be added to the array or the pandas.DataFrame, if set to `None` will skip adding data. Defaults to `None`.
     * save_to (str, optional): Can be `"csv"` or `"parquet"` or `None` if set to `"csv"` or `"parquet"` will save the dataset to the corresponding format in a newly created directory under the working directory, if set to `None` will not save the dataset. Defaults to `None`.
     * save_tag (str, optional): add the name tag of the file to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
     * timestamp_column (str, optional): the name of the column that has the timpestamps in seconds of the time series data. Defaults to `"Timestamp (seconds)"`.
@@ -28,7 +28,8 @@ class DataCleaner:
         step: int = None,
         drop_duplicates=True,
         window_transformation=False,
-        window_transformation_function=lambda x: sum(x) / len(x),
+        window_transformation_function=columns_mean,
+        transformation_kwargs=None,
         add_columns_dictionnary: dict = None,
         save_to=None,
         save_tag="dataset",
@@ -44,8 +45,8 @@ class DataCleaner:
         * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
         * drop_duplicates (bool, optional): if `True` removes the duplicate values using the Timestamp column as reference. Defaults to `True`.
         * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
-        * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
-        * add_columns_dictionnary (dict, optional): A dictionnary of keys (column names) and values to be added to the array or the pandas.DataFrame, if set to `None` will skip adding data. Defaults to `None`.
+        * transformation_fn (function, optional): A function to be applied to the window, it takes the window dataframe as argument. Defaults to applying mean mean values on the columns with: `columns_mean`.
+        * transformation_kwargs (dict,optional): A dictionary of keyword arguments (function arguments names and their values) specific to the function introduced in the transformation_fn, if not set will not pass any arguments to the function.Defaults to `None`.        * add_columns_dictionnary (dict, optional): A dictionnary of keys (column names) and values to be added to the array or the pandas.DataFrame, if set to `None` will skip adding data. Defaults to `None`.
         * save_to (str, optional): Can be `"csv"` or `"parquet"` or `None` if set to `"csv"` or `"parquet"` will save the dataset to the corresponding format in a newly created directory under the working directory, if set to `None` will not save the dataset. Defaults to `None`.
         * save_tag (str, optional): add the name tag of the file to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
         * timestamp_column (str, optional): the name of the column that has the timpestamps in seconds of the time series data. Defaults to `"Timestamp (seconds)"`.
@@ -75,8 +76,10 @@ class DataCleaner:
                 step=step,
                 window_transformation=window_transformation,
                 transformation_fn=window_transformation_function,
+                transformation_kwargs=transformation_kwargs,
                 verbose=verbose,
             )
+            self.windowed_data = self.windowed_data.dropna()
         if merge_data is not None:
             self.merged_data = self.dataframes_merging(
                 self.windowed_data,
