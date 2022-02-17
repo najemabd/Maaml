@@ -8,7 +8,14 @@ from sklearn.preprocessing import (
     PowerTransformer,
     Normalizer,
 )
-from maaml.utils import save_csv, DataFrame, window_stepping, save_parquet
+from maaml.utils import (
+    save_csv,
+    DataFrame,
+    window_stepping,
+    save_parquet,
+    transposing,
+    columns_mean,
+)
 import time
 
 
@@ -27,8 +34,10 @@ class DataPreprocessor:
     * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `None` will not perform the window stepping. Defaults to `None`.
     * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
     * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
-    * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
-    * save_to (str, optional): Can be `"csv"` or `"parquet"` or `None` if set to `"csv"` or `"parquet"` will save to the corresponding format in a newly created directory under the working directory, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied, if set to `None` will not save anything. Defaults to `None`.    * save_tag (str, optional): add a custom tag to the name of the files to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
+    * transformation_fn (function, optional): A function to be applied to the window, it takes the window dataframe as argument. Defaults to applying mean mean values on the columns with: `columns_mean`.
+    * transformation_kwargs (dict,optional): A dictionary of keyword arguments (function arguments names and their values) specific to the function introduced in the transformation_fn, if not set will not pass any arguments to the function.Defaults to `None`.
+    * save_to (str, optional): Can be `"csv"` or `"parquet"` or `None` if set to `"csv"` or `"parquet"` will save to the corresponding format in a newly created directory under the working directory, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied, if set to `None` will not save anything. Defaults to `None`.
+    * save_tag (str, optional): add a custom tag to the name of the files to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
     * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
     """
 
@@ -43,7 +52,8 @@ class DataPreprocessor:
         window_size=None,
         step=None,
         window_transformation=False,
-        window_transformation_function=lambda x: sum(x) / len(x),
+        window_transformation_function=columns_mean,
+        transformation_kwargs=None,
         save_to=None,
         save_tag="dataset",
         verbose=0,
@@ -61,7 +71,8 @@ class DataPreprocessor:
             * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `None` will not perform the window stepping. Defaults to `None`.
             * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
             * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
-            * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
+            * transformation_fn (function, optional): A function to be applied to the window, it takes the window dataframe as argument. Defaults to applying mean mean values on the columns with: `columns_mean`.
+            * transformation_kwargs (dict,optional): A dictionary of keyword arguments (function arguments names and their values) specific to the function introduced in the transformation_fn, if not set will not pass any arguments to the function.Defaults to `None`.
             * save_to (str, optional): Can be `"csv"` or `"parquet"` or `None` if set to `"csv"` or `"parquet"` will save to the corresponding format in a newly created directory under the working directory, the preprocessed dataset with an ML specified and DL specified datasets, and windowed data for each case if window stepping is applied, if set to `None` will not save anything. Defaults to `None`.
             * save_tag (str, optional): add a custom tag to the name of the files to be saved in the case of save_dataset is `True`. Defaults to `"dataset"`.
             * verbose (int, optional): An integer of the verbosity of the process can be ``0`` or ``1``. Defaults to ``0``.
@@ -98,7 +109,9 @@ class DataPreprocessor:
             scaler=scaler,
             verbose=verbose,
         )
-        self.ml_dataset = self.scaled_dataset
+        if verbose == 1:
+            print("Automatically performing a data Cleanup from missing values.")
+        self.ml_dataset = self.scaled_dataset.dropna()
         self.features = self.ml_dataset.drop(target_name, axis=1)
         self.target = self.ml_dataset[target_name]
         self.target_ohe = self.one_hot_encoding(
@@ -127,9 +140,10 @@ class DataPreprocessor:
             step=step,
             window_transformation=window_transformation,
             transformation_fn=window_transformation_function,
+            transformation_kwargs=transformation_kwargs,
             verbose=verbose,
         )
-        self.ml_dataset_w = self.windowed_dataset
+        self.ml_dataset_w = self.windowed_dataset.dropna()
         self.features_w = self.ml_dataset_w.drop(target_name, axis=1)
         if window_transformation == True:
             self.target_w = self.ml_dataset_w[target_name].round()
@@ -332,7 +346,8 @@ if __name__ == "__main__":
         window_size=60,
         step=10,
         window_transformation=False,
-        window_transformation_function=lambda x: sum(x) / len(x),
+        window_transformation_function=transposing,
+        transformation_kwargs={"excluded": ["target"]},
         save_to=False,
         verbose=1,
     )
