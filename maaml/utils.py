@@ -364,13 +364,26 @@ def pattern_search(pattern, local_set, error_message, global_set=None):
         raise ValueError(error_message)
 
 
+def columns_mean(df):
+    """A function to apply mean on a dataframe columns.
+
+    Args:
+        - df (pandas.Dataframe): a dtaframe to apply the mean to all it's columns.
+
+    Returns:
+        - pandas.DataFrame: A dataframe with the mean of every column.
+    """
+    return df.apply(lambda x: sum(x) / len(x))
+
+
 def window_stepping(
     data=None,
     window_size: int = None,
     step: int = None,
-    window_transformation=False,
-    transformation_fn=lambda x: sum(x) / len(x),
-    verbose=1,
+    window_transformation: bool = False,
+    transformation_fn=columns_mean,
+    transformation_kwargs: dict = None,
+    verbose: int = 1,
 ):
     """A function for window stepping a time series data.
 
@@ -379,7 +392,8 @@ def window_stepping(
         * window_size (int, optional): the size of the window, in case of `None` will not perform the window stepping and will raise ValueError. Defaults to `None`.
         * step (int, optional): The length of the step,if `None` will not perform the window stepping and will raise ValueError, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
         * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
-        * window_transformation_function (function, optional): A function to be applied to the window preferably a lambda function. Defaults to the mean value with: `lambda x:sum(x)/len(x)`.
+        * transformation_fn (function, optional): A function to be applied to the window, it takes the window dataframe as argument. Defaults to applying mean mean values on the columns with: `columns_mean`.
+        * transformation_kwargs (dict,optional): A dictionary of keyword arguments (function arguments names and their values) specific to the function introduced in the transformation_fn, if not set will not pass any arguments to the function.Defaults to `None`.
         * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
 
     Returns:
@@ -402,8 +416,13 @@ def window_stepping(
                     window_segment = data[i : i + window_size]
                     if window_transformation is True:
                         try:
-                            window_segment = window_segment.apply(
-                                transformation_fn, axis=0
+                            transformation_kwargs = (
+                                {}
+                                if transformation_kwargs is None
+                                else transformation_kwargs
+                            )
+                            window_segment = transformation_fn(
+                                window_segment, **transformation_kwargs
                             )
                         except TypeError:
                             raise TypeError(
@@ -424,6 +443,46 @@ def window_stepping(
     else:
         raise ValueError("Empty data entry")
     return final_data
+
+
+def transposing(data, excluded=None, verbose=0):
+    """A function to transpose a dataframe.
+
+    Args:
+        - data (pandas.DataFrame): A dataFrame to be transposed.
+        - excluded (list, optional): A list of columns names to be excluded from the transpose operation. Defaults to `None`.
+        - verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
+
+    Raises:
+        - KeyError: if one of the excluded list does not exist in the data columns names.
+        - ValueError: if the entry data is not a dataframe and cannot be transformed into dataframe.
+
+    Returns:
+        - pandas.DataFrame: A transposed dataframe.
+    """
+    data = DataFrame(data).reset_index(drop=True)
+    excluded = [] if excluded is None else excluded
+    if excluded != []:
+        try:
+            saved = data[excluded]
+        except KeyError:
+            raise KeyError("One column name or more in excluded does not exist in data")
+        data = data.drop(excluded, axis=1).T
+        if len(saved) >= len(data):
+            data[excluded] = saved.loc[: len(data) - 1].values
+        else:
+            print(
+                "The excluded columns are smaller than the transposed data..skipping adding them."
+            )
+        if verbose == 1:
+            print(f"These columns are chosen to not be transposed:\n{excluded}")
+    elif excluded == []:
+        data = data.T
+        if verbose == 1:
+            print("Transposing all columns.")
+    else:
+        raise ValueError("Data is not acceptable format.")
+    return data
 
 
 if __name__ == "__main__":
