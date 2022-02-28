@@ -16,6 +16,7 @@ from sklearn.metrics import (
     roc_auc_score,
     classification_report,
 )
+from xgboost import XGBClassifier
 import numpy as np
 import time
 from maaml.utils import save_csv, dict_transpose
@@ -100,6 +101,11 @@ class Evaluator:
             if "SVC" in str(self.model):
                 self.model_name = str(self.model).replace("SVC", "SVMClassifier")
             self.model_name = str(self.model).replace("()", "")
+            if "XGB" in str(self.model):
+                if parameter is not None:
+                    self.model_name = f"XGBClassifier (n_estimators={parameter})"
+                else:
+                    self.model_name = "XGBClassifier"
 
             cross_evaluation = self.model_cross_validating(
                 features,
@@ -121,6 +127,8 @@ class Evaluator:
                 self.evaluation = dict_transpose(self.evaluation)
                 if save_eval is True:
                     self.tag = f"{self.model_name}{self.save_tag}_evaluation"
+                    print("path is : \n", PATH)
+                    print("tag is : \n", self.tag)
                     save_csv(self.evaluation, PATH, self.tag, verbose)
 
             try:
@@ -199,12 +207,26 @@ class Evaluator:
                 model = MLPClassifier(max_iter=parameter)
             else:
                 model = MLPClassifier()
+        elif model_name == "10" or model_name == "XGboost":
+            if parameter is not None:
+                parameter = int(parameter)
+                model = XGBClassifier(
+                    n_estimators=parameter,
+                    use_label_encoder=False,
+                    verbosity=0,
+                    silent=True,
+                )
+            else:
+                model = XGBClassifier(use_label_encoder=False, verbosity=0, silent=True)
         else:
             error_message = "ERROR:wrong entry,you have 9 different classifiers, you could choose by number or by name"
             print(error_message)
             model = "No model"
         if verbose == 1:
-            print(f"\nThe {str(model)} is selected")
+            if "XGB" in str(model):
+                print("\nThe XGBClassifier is selected")
+            else:
+                print(f"\nThe {str(model)} is selected")
         return model
 
     def model_cross_validating(
@@ -421,12 +443,15 @@ class Evaluator:
 
 def main():
     from maaml.preprocessing import DataPreprocessor as dp
+    from maaml.Datasets.UAH_dataset.time_series import UAHDatasetLoader
 
-    processed = dp(dataset="UAHdataset", scaler=2)
+    raw = UAHDatasetLoader()
+    processed = dp(data=raw.data, scaler=2)
     uahdataset = processed.ml_dataset
     alias = processed.scaler_name
     ml_evaluation = Evaluator(
-        3,
+        model_name=10,
+        parameter=1000,
         dataset=uahdataset,
         verbose=1,
         preprocessing_alias=alias,

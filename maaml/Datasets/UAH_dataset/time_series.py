@@ -1,6 +1,14 @@
-import pandas as pd
-from maaml.utils import save_csv, FileScraper, pattern_search, read_csv, save_parquet
+from maaml.utils import (
+    read_parquet,
+    save_csv,
+    FileScraper,
+    pattern_search,
+    read_csv,
+    save_parquet,
+    DataFrame,
+)
 from maaml.cleaning import DataCleaner
+import pkg_resources
 
 
 class UahDatasetPathFinder:
@@ -51,10 +59,10 @@ class UahDatasetPathFinder:
             * ValueError: In the case of wrong argement type or entry, with a description for the reason.
         """
         file_error_msg = (
-            "please give a correct data_type from the files available for the dataset"
+            "Please give a correct data_type from the files available for the dataset."
         )
         numeric_file_error_msg = (
-            "please give the correct number of the file, only 9 file available"
+            "Please give the correct number of the file, only 9 file available."
         )
         data_type = self.numeric_to_string_from_list(
             data_type, self.SENSOR_FILES, numeric_file_error_msg
@@ -82,7 +90,7 @@ class UahDatasetPathFinder:
                 else int(driver[-1])
             )
             driver_error_msg = (
-                "please give a correct driver number, only 6 drivers available."
+                "Please give a correct driver number, only 6 drivers available."
             )
             driver_name = f"D{driver}"
             self.driver = driver_name
@@ -92,36 +100,36 @@ class UahDatasetPathFinder:
                     f"\033[1mdriver {driver_name} has {len(driver_paths)} diffrent paths\033[0m"
                 )
             numeric_state_error_msg = (
-                "please give the correct driving state number, only 3 states available."
+                "Please give the correct driving state number, only 3 states available."
             )
             state = self.numeric_to_string_from_list(
                 state, self.STATES, error_msg=numeric_state_error_msg
             )
-            state_error_msg = f"\nplease give driving state number or give the correct driving state from:\n{self.STATES}"
+            state_error_msg = f"\nPlease give driving state number or give the correct driving state from:\n{self.STATES}"
             self.state = pattern_search(
                 state.upper(), self.STATES, state_error_msg
             ).pop()
             state_paths = pattern_search(self.state, driver_paths, state_error_msg)
             numeric_road_error_msg = (
-                "please give the correct road number, only 2 roads available."
+                "Please give the correct road number, only 2 roads available."
             )
             road = self.numeric_to_string_from_list(
                 road, self.ROADS, numeric_road_error_msg
             )
-            road_error_msg = f"\nplease give road number or give the correct road name from:\n{self.ROADS}"
+            road_error_msg = f"\nPlease give road number or give the correct road name from:\n{self.ROADS}"
             self.road = pattern_search(road.upper(), self.ROADS, road_error_msg).pop()
             road_paths = pattern_search(self.road, state_paths, road_error_msg)
             road_paths = list(road_paths)
             if len(road_paths) > 1 and verbose == 2:
                 print(
-                    f"\nThere is more than one path for this case,the selection depended on the standard parameter"
+                    f"\nThere is more than one path for this case,the selection depended on the standard parameter."
                 )
             if standard:
                 try:
                     self.file_path = road_paths[0]
                 except IndexError:
                     raise ValueError(
-                        "driver 6 does not have data for state: AGGRESSIVE and road: SECONDARY"
+                        "Driver 6 does not have data for state: AGGRESSIVE and road: SECONDARY ."
                     )
             elif not standard:
                 try:
@@ -162,7 +170,7 @@ class UahDatasetPathFinder:
         return element
 
 
-class UahDatasetLoader(UahDatasetPathFinder):
+class UahDatasetReader(UahDatasetPathFinder):
     """A class for loading a UahDataset file into a dataframe, includes a dictionary attribute of the `files_column_names` and a `data` attribute, a `__call__ ` method for calling an instance of the class to return the `data` attribute.
 
     Args:
@@ -437,7 +445,7 @@ class UAHDatasetBuilder:
             * name_dataset (str, optional): The name of the dataset in case of save_to is set to save the dataset. Defaults to "UAHDataset".
             * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1`` or ``2``or ``3``. Defaults to ``0``.
         """
-        self.data = pd.DataFrame()
+        self.data = DataFrame()
         count = 0
         for i in (1, 2, 3, 4, 5, 6):
             for j in (1, 2, 3):
@@ -451,7 +459,7 @@ class UAHDatasetBuilder:
                                 print(
                                     "\n===========LOADING THE FIRST DATA FILE===========\n"
                                 )
-                            raw_data1 = UahDatasetLoader(
+                            raw_data1 = UahDatasetReader(
                                 path,
                                 i,
                                 j,
@@ -478,7 +486,7 @@ class UAHDatasetBuilder:
                                 print(
                                     "\n===========LOADING THE SECOND DATA FILE===========\n"
                                 )
-                            raw_data2 = UahDatasetLoader(
+                            raw_data2 = UahDatasetReader(
                                 path,
                                 i,
                                 j,
@@ -552,6 +560,70 @@ class UAHDatasetBuilder:
         return self.data
 
 
+class UAHDatasetLoader:
+    def __init__(self, path=None, specific_section=None, read_from=None, verbose=0):
+        """[summary]
+
+        Args:
+            * path (str, optional): The data file name in the working directory or the data file path with the file name used in case the dataset prarameter is not set. Defaults to `""`.
+            * specific_section (str or int, optional): A parameter to define a specific grouping from the UAHdataset used in case the dataset prarameter is not set. Defaults to `None`.
+            read_from ([type], optional): [description]. Defaults to None.
+            verbose (int, optional): [description]. Defaults to 0.
+
+        Raises:
+            ValueError: [description]
+            ValueError: [description]
+            ValueError: [description]
+        """
+        if read_from is None:
+            read_from = "csv"
+        elif read_from != "csv" and read_from != "parquet":
+            raise ValueError("read_from parameter is unavailable or an Unkown format.")
+        if path is None:
+            path = pkg_resources.resource_filename(
+                __name__, f"dataset/UAHDataset.{read_from}"
+            )
+            print(f"\nLoading the internal \033[1mUAHDataset\033[0m from maaml\n")
+        if read_from == "csv":
+            try:
+                self.data = read_csv(path, delimiter=",", header=0, verbose=verbose)
+            except Exception:
+                raise ValueError("Verify the provided path.")
+        elif read_from == "parquet":
+            try:
+                self.data = read_parquet(path, verbose=verbose)
+            except Exception:
+                raise ValueError("Verify the provided path for the parquet file.")
+        if specific_section is None:
+            data_info = "full data loaded successfully\n"
+        elif str(specific_section) == "secondary road" or str(specific_section) == "":
+            self.data = self.data.loc[self.data["road"] == "secondary"]
+            self.data = self.data.drop("road", axis=1)
+            data_info = "data of secondary road loaded successfully"
+        elif str(specific_section) == "motorway road" or str(specific_section) == "0":
+            self.data = self.data.loc[self.data["road"] == "motorway"]
+            self.data = self.data.drop("road", axis=1)
+            data_info = "data of motorway road loaded successfully"
+        elif int(specific_section) < 7:
+            self.data = self.data.loc[self.data["driver"] == int(specific_section)]
+            self.data = self.data.drop("driver", axis=1)
+            data_info = (
+                f"data of driver number {int(specific_section)} loaded successfully \n"
+            )
+        else:
+            raise ValueError("Wrong specific_section entry.")
+        if verbose == 1:
+            print(data_info)
+
+    def __call__(self):
+        """A method for the class instance call
+
+        Returns:
+            * pandas.DataFrame: built dataset dataframe.
+        """
+        return self.data
+
+
 if __name__ == "__main__":
     DATA_DIR_PATH = "/run/media/najem/34b207a8-0f0c-4398-bba2-f31339727706/home/stock/The_stock/dev & datasets/PhD/datasets/UAH-DRIVESET-v1/"
     dataset = UAHDatasetBuilder(
@@ -562,5 +634,3 @@ if __name__ == "__main__":
         step_dt2=10,
         verbose=2,
     )
-
-# %%

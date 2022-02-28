@@ -10,6 +10,72 @@ variance = lambda data: sum([x ** 2 for x in [i - mean(data) for i in data]]) / 
 std_dev = lambda data: sqrt(variance(data))
 
 
+class DataFrame(pd.DataFrame):
+    """A class to create a DataFrame.
+
+    Args:
+        * pandas.DataFrame (object): A pandas dataframe.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """A constructor for DataFrame class."""
+        super().__init__(*args, **kwargs)
+
+
+class DataReader:
+    """A class for reading data in the form of dataframes from a file. includes a `path` attribute and `data` attribute and a `__call__ ` method for calling an instance of the class to return the `data` attribute.
+
+    Args:
+        * path (str): The data file name in the working directory or the data file path with the file name.
+        * header (int, optional):  The specification of the technique used to define the columns names, if needed for the file format,should be `None` in case of no columns names in the file, `0` in case that first row is the header. Defaults to `None`.
+        * delimiter (str, optional): A string for the type of separation used in the file, if needed for the file format. Defaults to `" "`.
+        * read_from (str,optinoal): The format of the read data such as `"csv"` or `"parquet"`, if set to `None` DataReader will try to guess the format. Defaults to `None`.
+        * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``0``.
+    """
+
+    def __init__(
+        self, path, header=None, delimiter=" ", read_from: str = None, verbose=0
+    ):
+        """A constuctor for DataReader class.
+
+        Args:
+        * path (str): The data file name in the working directory or the data file path with the file name.
+        * header (int, optional):  The specification of the technique used to define the columns names: `None` in case of no columns names in the file, `0` in case that first row is the header. Defaults to `None`.
+        * delimiter (str, optional): A string for the type of separation used in the csv file. Defaults to `" "`.
+        * read_from (str,optinoal): The format of the read data such as `"csv"` or `"parquet"`, if set to `None` DataReader will try to guess the format. Defaults to `None`.
+        * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``0``.
+        """
+        self.path = str(path)
+        if path.endswith(".csv") or read_from == "csv":
+            self.data = read_csv(
+                path, header=header, delimiter=delimiter, verbose=verbose
+            )
+        elif path.endswith(".parquet") or read_from == "parquet":
+            self.data = read_parquet(path, verbose=verbose)
+        else:
+            try:
+                self.data = read_csv(
+                    path, header=header, delimiter=delimiter, verbose=0
+                )
+                if verbose == 1:
+                    print(f"\033[1mReading file from:\n{path} \033[0m\n")
+            except Exception:
+                if read_from is not None:
+                    print(
+                        f"please be specific about the data_format,your data_format '{read_from}' is not supported"
+                    )
+                else:
+                    print("please set the data_format")
+
+    def __call__(self):
+        """A method for the class instance call
+
+        Returns:
+            * pandas.DataFrame: The read dataset from the file.
+        """
+        return self.data
+
+
 def save_csv(df, path, name, verbose=0, prompt=None):
     """saves a csv file from pandas DataFrame to the given path with the given name,
     if the entry is not a pandas DataFrame, it gets transformed to a pandas
@@ -20,8 +86,7 @@ def save_csv(df, path, name, verbose=0, prompt=None):
         * path (str): A string of the path where the file is going to be saved
         * name (str): A string of the name of the saved file with or without the .csv extention
         * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
-        * prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default
-            generated prompt in case of verbosity set to ``1``. Defaults to ``None``.
+        * prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default generated prompt in case of verbosity set to ``1``. Defaults to ``None``.
     """
     if not isinstance(df, pd.DataFrame):
         df = pd.DataFrame(df)
@@ -51,8 +116,7 @@ def save_parquet(df, path, name, verbose=0, prompt=None):
         * path (str): A string of the path where the file is going to be saved
         * name (str): A string of the name of the saved file with or without the .parquet extention
         * verbose (int, optional): An integer of the verbosity of the function can be ``0`` or ``1``. Defaults to ``0``.
-        * prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default
-            generated prompt in case of verbosity set to ``1``. Defaults to ``None``.
+        * prompt (str, optional): A string of a custom prompt that is going to be displayed instead of the default generated prompt in case of verbosity set to ``1``. Defaults to ``None``.
     """
     if not isinstance(df, pd.DataFrame):
         df = pd.DataFrame(df)
@@ -85,7 +149,11 @@ def read_csv(path, delimiter=" ", header=None, verbose=0, prompt=None):
     Returns:
         * pandas.DataFrame: A pandas dataframe of the read file.
     """
-    df_csv = pd.read_table(path, header=header, delimiter=delimiter)
+    try:
+        df_csv = pd.read_table(path, header=header, delimiter=delimiter)
+    except FileNotFoundError:
+        path = path + ".csv"
+        df_csv = pd.read_table(path, header=header, delimiter=delimiter)
     if verbose > 0:
         if prompt is None:
             print(f"\n\033[1mLoading dataframe from csv file in:\n{path} \033[0m\n")
@@ -106,7 +174,11 @@ def read_parquet(path, verbose=0, prompt=None):
     Returns:
         * pandas.DataFrame: A pandas dataframe of the read file.
     """
-    df_parquet = pd.read_parquet(path)
+    try:
+        df_parquet = pd.read_parquet(path)
+    except FileNotFoundError:
+        path = path + "parquet"
+        df_parquet = pd.read_parquet(path)
     if verbose > 0:
         if prompt is None:
             print(f"\n\033[1mLoading dataframe from parquet file in:\n{path} \033[0m\n")
@@ -290,6 +362,127 @@ def pattern_search(pattern, local_set, error_message, global_set=None):
         return matching_result_set
     else:
         raise ValueError(error_message)
+
+
+def columns_mean(df):
+    """A function to apply mean on a dataframe columns.
+
+    Args:
+        - df (pandas.Dataframe): a dtaframe to apply the mean to all it's columns.
+
+    Returns:
+        - pandas.DataFrame: A dataframe with the mean of every column.
+    """
+    return df.apply(lambda x: sum(x) / len(x))
+
+
+def window_stepping(
+    data=None,
+    window_size: int = None,
+    step: int = None,
+    window_transformation: bool = False,
+    transformation_fn=columns_mean,
+    transformation_kwargs: dict = None,
+    verbose: int = 1,
+):
+    """A function for window stepping a time series data.
+
+    Args:
+        * data (pandas.DataFrame, optional): A data array in pandas.DataFrame format. Defaults to `None`.
+        * window_size (int, optional): the size of the window, in case of `None` will not perform the window stepping and will raise ValueError. Defaults to `None`.
+        * step (int, optional): The length of the step,if `None` will not perform the window stepping and will raise ValueError, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
+        * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
+        * transformation_fn (function, optional): A function to be applied to the window, it takes the window dataframe as argument. Defaults to applying mean mean values on the columns with: `columns_mean`.
+        * transformation_kwargs (dict,optional): A dictionary of keyword arguments (function arguments names and their values) specific to the function introduced in the transformation_fn, if not set will not pass any arguments to the function.Defaults to `None`.
+        * verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
+
+    Returns:
+        * pandas.DataFrame: A window stepped data in case the window was bigger than 0 or the entry dataframe in case window_size is equal to 0.
+    """
+    data = DataFrame(data)
+    if len(data) != 0:
+        if (window_size is not None) and (step is not None):
+            if window_size == 0 or step == 0:
+                raise ValueError(
+                    "Window stepping is not possible,one or both of window_size and step is set to 0."
+                )
+            elif step >= len(data) or window_size >= len(data):
+                raise ValueError(
+                    "Window stepping is not possible,The length of one or both window_size and step parameters is the same or bigger than the data length."
+                )
+            else:
+                final_data = DataFrame()
+                for i in range(0, len(data) - 1, step):
+                    window_segment = data[i : i + window_size]
+                    if window_transformation is True:
+                        try:
+                            transformation_kwargs = (
+                                {}
+                                if transformation_kwargs is None
+                                else transformation_kwargs
+                            )
+                            window_segment = transformation_fn(
+                                window_segment, **transformation_kwargs
+                            )
+                        except TypeError:
+                            raise TypeError(
+                                "\033[1mCan not apply window_transformation function, the function does not conform with the data types.\033[0m"
+                            )
+                    final_data = final_data.append(window_segment, ignore_index=True)
+                if verbose == 1:
+                    if window_transformation is True:
+                        print("\n\033[1mWindow transformation applied.\033[0m")
+                    else:
+                        print(
+                            f"\nWindow stepping applied with window size: {window_size} and step : {step} ."
+                        )
+        else:
+            raise ValueError(
+                "Window stepping is not possible,one or both of window_size and step is not set."
+            )
+    else:
+        raise ValueError("Empty data entry")
+    return final_data
+
+
+def transposing(data, excluded=None, verbose=0):
+    """A function to transpose a dataframe.
+
+    Args:
+        - data (pandas.DataFrame): A dataFrame to be transposed.
+        - excluded (list, optional): A list of columns names to be excluded from the transpose operation. Defaults to `None`.
+        - verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
+
+    Raises:
+        - KeyError: if one of the excluded list does not exist in the data columns names.
+        - ValueError: if the entry data is not a dataframe and cannot be transformed into dataframe.
+
+    Returns:
+        - pandas.DataFrame: A transposed dataframe.
+    """
+    data = DataFrame(data).reset_index(drop=True)
+    excluded = [] if excluded is None else excluded
+    if excluded != []:
+        try:
+            saved = data[excluded]
+        except KeyError:
+            raise KeyError("One column name or more in excluded does not exist in data")
+        data = data.drop(excluded, axis=1).T
+        if len(saved) >= len(data):
+            data[excluded] = saved.loc[: len(data) - 1].values
+        else:
+            print(
+                "The excluded columns are smaller than the transposed data..skipping adding them."
+            )
+        if verbose == 1:
+            print(f"These columns are chosen to not be transposed:\n{excluded}")
+    elif excluded == []:
+        data = data.T
+        if verbose == 1:
+            print("Transposing all columns.")
+    else:
+        raise ValueError("Data is not acceptable format.")
+    return data
 
 
 if __name__ == "__main__":
