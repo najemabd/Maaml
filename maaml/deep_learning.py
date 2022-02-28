@@ -25,7 +25,7 @@ from maaml.machine_learning import (
     ShuffleSplit,
     np,
 )
-from maaml.utils import save_csv
+from maaml.utils import save_csv, DataFrame
 
 
 class DeepRCNModel:
@@ -144,6 +144,7 @@ class Evaluator:
         * input_shape (tuple): The input shape of the model as a tuple. Defaults to `None`.
         * preprocessing_alias (str, optional): The name for the applied dataset preprocessing as a string that is going to be displayed in the cross validation results. Defaults to `None`.
         * cross_eval (bool, optional): A full cross validation evaluation in the case of `True` or a training session evaluation in the case of `False`. Defaults to `True`.
+        * save_eval (bool, optional): saves the evaluation results in a new directory under the working directory in case of `True` and does not save the evaluation results in the case of `False`. Defaults to `False`.
         * save_tag (str, optional): The tag given to the created directory and the saved evaluation result, important in case of mutiple evaluation in the same directory to not overwite exiting results. Defaults to `None`.
         * nb_splits (int, optional): The number of splits in case of cross validation. Defaults to `5`.
         * test_size (float, optional): The percentage of the test sample size as a float from the full dataset represented as `1` . Defaults to `0.3`.
@@ -169,6 +170,7 @@ class Evaluator:
         input_shape=None,
         preprocessing_alias=None,
         cross_eval=True,
+        save_eval=True,
         save_tag=None,
         nb_splits=5,
         test_size=0.3,
@@ -194,6 +196,7 @@ class Evaluator:
             * input_shape (tuple): The input shape of the model as a tuple. Defaults to `None`.
             * preprocessing_alias (str, optional): The name for the applied dataset preprocessing as a string that is going to be displayed in the cross validation results. Defaults to `None`.
             * cross_eval (bool, optional): A full cross validation evaluation in the case of `True` or a training session evaluation in the case of `False`. Defaults to `True`.
+            * save_eval (bool, optional): saves the evaluation results in a new directory under the working directory in case of `True` and does not save the evaluation results in the case of `False`. Defaults to `False`.
             * save_tag (str, optional): The tag given to the created directory and the saved evaluation result, important in case of mutiple evaluation in the same directory to not overwite exiting results. Defaults to `None`.
             * nb_splits (int, optional): The number of splits in case of cross validation. Defaults to `5`.
             * test_size (float, optional): The percentage of the test sample size as a float from the full dataset represented as `1` . Defaults to `0.3`.
@@ -220,27 +223,30 @@ class Evaluator:
                     if keyname in column_name:
                         self.target_list.append(column_name)
         if cross_eval is True:
-            self.cross_evaluation = self.cross_validating(
-                model=model,
-                dataset=dataset,
-                features=features,
-                target_column=target_column,
-                target=target,
-                target_names=self.target_list,
-                model_name=self.model_name,
-                preprocessing_alias=preprocessing_alias,
-                input_shape=input_shape,
-                save_tag=self.save_tag,
-                callbacks=callbacks,
-                learning_rate_scheduler=learning_rate_scheduler,
-                nb_splits=nb_splits,
-                test_size=test_size,
-                opt=opt,
-                loss=loss,
-                metrics=metrics,
-                epochs=epochs,
-                batch_size=batch_size,
-                verbose=verbose,
+            self.cross_evaluation = DataFrame(
+                self.cross_validating(
+                    model=model,
+                    dataset=dataset,
+                    features=features,
+                    target_column=target_column,
+                    target=target,
+                    target_names=self.target_list,
+                    model_name=self.model_name,
+                    preprocessing_alias=preprocessing_alias,
+                    input_shape=input_shape,
+                    save_eval=save_eval,
+                    save_tag=self.save_tag,
+                    callbacks=callbacks,
+                    learning_rate_scheduler=learning_rate_scheduler,
+                    nb_splits=nb_splits,
+                    test_size=test_size,
+                    opt=opt,
+                    loss=loss,
+                    metrics=metrics,
+                    epochs=epochs,
+                    batch_size=batch_size,
+                    verbose=verbose,
+                )
             )
         elif cross_eval is not True:
             (
@@ -248,25 +254,28 @@ class Evaluator:
                 self.best_model,
                 self.training_history,
                 self.evaluation,
-            ) = self.model_training(
-                model=model,
-                dataset=dataset,
-                features=features,
-                target_column=target_column,
-                target=target,
-                target_names=self.target_list,
-                model_name=self.model_name,
-                input_shape=input_shape,
-                save_tag=self.save_tag,
-                callbacks=callbacks,
-                learning_rate_scheduler=learning_rate_scheduler,
-                test_size=test_size,
-                opt=opt,
-                loss=loss,
-                metrics=metrics,
-                epochs=epochs,
-                batch_size=batch_size,
-                verbose=verbose,
+            ) = DataFrame(
+                self.model_training(
+                    model=model,
+                    dataset=dataset,
+                    features=features,
+                    target_column=target_column,
+                    target=target,
+                    target_names=self.target_list,
+                    model_name=self.model_name,
+                    input_shape=input_shape,
+                    save_eval=save_eval,
+                    save_tag=self.save_tag,
+                    callbacks=callbacks,
+                    learning_rate_scheduler=learning_rate_scheduler,
+                    test_size=test_size,
+                    opt=opt,
+                    loss=loss,
+                    metrics=metrics,
+                    epochs=epochs,
+                    batch_size=batch_size,
+                    verbose=verbose,
+                )
             )
 
     def model_training(
@@ -278,6 +287,8 @@ class Evaluator:
         target,
         target_names,
         input_shape,
+        preprocessing_alias="",
+        save_eval=True,
         save_tag="",
         callbacks="best model",
         learning_rate_scheduler="scheduler",
@@ -300,6 +311,8 @@ class Evaluator:
             * target_name (str, optional): The name of the classification target as a string. Defaults to `"target"`.
             * model_name (str, optional): The name of the model as string that is going to be displayed in the training results. Defaults to `None`.
             * input_shape (tuple): The input shape of the model as a tuple. Defaults to `None`.
+            * preprocessing_alias (str, optional): The name for the applied dataset preprocessing as a string that is going to be displayed in the training results. Defaults to `None`.
+            * save_eval (bool, optional): saves the evaluation results in a new directory under the working directory in case of `True` and does not save the evaluation results in the case of `False`. Defaults to `False`.
             * save_tag (str, optional): The tag given to the created directory and the saved evaluation result, important in case of mutiple evaluation in the same directory to not overwite exiting results. Defaults to `None`.
             * callbacks (str, optional): The training model callback specification that saves the training model if not specified as `"best model"`, the trained model will not be saved. Defaults to `"best model"`.
             * learning_rate_scheduler (str, optional): If defined as `"scheduler"` uses the internal `learning_rate_sheduling` method to define and change the learning rate. Defaults to `"scheduler"`.
@@ -356,7 +369,8 @@ class Evaluator:
         )
         end_time = time.perf_counter()
         training_history = history.history
-        save_csv(training_history, PATH, "training_history")
+        if save_eval is True:
+            save_csv(training_history, PATH, "training_history")
         if callbacks == "best model":
             try:
                 best_model = load_model(filepath)
@@ -389,6 +403,8 @@ class Evaluator:
             f"cohen kappa: {cokap_score: .4%}",
             f"roc_auc_score: {roc_auc: .4%}",
         ]
+        if save_eval is True:
+            save_csv(scores, PATH, f"cross_validation_{preprocessing_alias}{save_tag}")
         if verbose == 1:
             print(scores)
         return model, best_model, training_history, scores
@@ -404,6 +420,7 @@ class Evaluator:
         model_name,
         input_shape,
         preprocessing_alias="",
+        save_eval=True,
         save_tag="",
         callbacks="best model",
         learning_rate_scheduler="scheduler",
@@ -428,6 +445,7 @@ class Evaluator:
             * model_name (str, optional): The name of the model as string that is going to be displayed in the cross validation results. Defaults to `None`.
             * input_shape (tuple): The input shape of the model as a tuple. Defaults to `None`.
             * preprocessing_alias (str, optional): The name for the applied dataset preprocessing as a string that is going to be displayed in the cross validation results. Defaults to `None`.
+            * save_eval (bool, optional): saves the evaluation results in a new directory under the working directory in case of `True` and does not save the evaluation results in the case of `False`. Defaults to `False`.
             * save_tag (str, optional): The tag given to the created directory and the saved evaluation result, important in case of mutiple evaluation in the same directory to not overwite exiting results. Defaults to `None`.
             * callbacks (str, optional): The training model callback specification that saves the training model if not specified as `"best model"`, the trained model will not be saved. Defaults to `"best model"`.
             * learning_rate_scheduler (str, optional): If defined as `"scheduler"` uses the internal `learning_rate_sheduling` method to define and change the learning rate. Defaults to `"scheduler"`.
@@ -496,11 +514,12 @@ class Evaluator:
             )
             end_time = time.perf_counter()
             training_history = history.history
-            save_csv(
-                training_history,
-                PATH,
-                f"training_history_cv{len(train_acc_scores) + 1}",
-            )
+            if save_eval is True:
+                save_csv(
+                    training_history,
+                    PATH,
+                    f"training_history_cv{len(train_acc_scores) + 1}",
+                )
             if callbacks == "best model":
                 try:
                     best_model = load_model(filepath)
@@ -553,7 +572,10 @@ class Evaluator:
             f"{np.mean(cokap_scores):.4%} (+/- {np.std(cokap_scores):.4%})",
             f"{np.mean(roc_auc_scores):.4%} (+/- {np.std(roc_auc_scores):.4%})",
         ]
-        save_csv(cv_scores, PATH, f"cross_validation_{preprocessing_alias}{save_tag}")
+        if save_eval is True:
+            save_csv(
+                cv_scores, PATH, f"cross_validation_{preprocessing_alias}{save_tag}"
+            )
         return cv_scores
 
     @staticmethod
@@ -646,9 +668,11 @@ class Evaluator:
 
 def main():
     from maaml.preprocessing import DataPreprocessor as dp
+    from maaml.Datasets.UAH_dataset.time_series import UAHDatasetLoader
 
-    processed = dp(dataset="UAHdataset", scaler=2)
-    uahdataset = processed.preprocessed_dataset
+    raw = UAHDatasetLoader()
+    processed = dp(data=raw.data, scaler=2, droped_columns=["Timestamp (seconds)"])
+    uahdataset = processed.dl_dataset
     alias = processed.scaler_name
     model_build = DeepRCNModel()
     model_build.show()
