@@ -24,7 +24,7 @@ exemple:
 ```python
 from maam.utils import read_csv,save_parquet
 from maaml.cleaning import DataCleaner
-from maaml.preprocessing import DataPreprocessor
+from maaml.preprocessing import DataPreprocessor,columns_mean
 from maaml.machine_learning import Evaluator as MLEvaluator
 from maaml.deep_learning import Evaluator as DLEvaluator
 from maaml.deep_learning import DeepRCNModel
@@ -38,22 +38,22 @@ cleaner_dataset = DataCleaner(
     df,
     drop_duplicates=True,
     add_columns_dictionnary: dict = {"driver": "driver1","road": "HIGHWAY","target": "Normal"}, # add columns with a spesific values
-    save_dataset=True, # save data after cleaning process
+    save_to="csv", # save data after cleaning process to csv file, can also be saved to parquet with the argument "parquet" instead of "csv".
     save_tag="dataset",
     timestamp_column="Timestamp (seconds)",
     verbose=1,
     )
 # preprocess the dataset: filter the data, scale the data , window stepping, encode categorical data, one hot encode the classification target
 preprocessed_dataset = DataPreprocessor(
-    dataset=cleaner_dataset(),
+    dataset=cleaner_dataset(),# the data can also be passed from the cleaner_dataset class instance using the data attribute such as : cleaner_dataset.data 
     target_name="target",
     scaler="minmax",
     droped_columns=["Timestamp (seconds)"],
     window_size=10,
     step=10,
     window_transformation=True,
-    window_transformation_function=lambda x: sum(x) / len(x),
-    save_dataset=True,
+    window_transformation_function=columns_mean, # columns_mean is a pre-build function available in the utils module and the preprocessing module that takes a dataframe as input and applies mean to all induvidual columns.
+    save_to="csv", # The same as the DataCleaner class, you can use "csv" or "parquet".
     save_tag="preprocessed_dataset",
     verbose=0,
     )
