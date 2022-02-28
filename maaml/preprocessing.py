@@ -8,6 +8,7 @@ from sklearn.preprocessing import (
     PowerTransformer,
     Normalizer,
 )
+from sklearn.decomposition import PCA
 from maaml.utils import (
     save_csv,
     DataFrame,
@@ -31,6 +32,7 @@ class DataPreprocessor:
     * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `None`.
     * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `None`.
     * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `None`.
+    * nb_pca_component (int,optional): The number of component for Prinicipal Component Analysis, if set to `None` does not perform PCA. Defaults to `None`.
     * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `None` will not perform the window stepping. Defaults to `None`.
     * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
     * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
@@ -49,6 +51,7 @@ class DataPreprocessor:
         droped_columns=None,
         no_encoding_columns=None,
         no_scaling_columns=None,
+        nb_pca_component=None,
         window_size=None,
         step=None,
         window_transformation=False,
@@ -68,6 +71,7 @@ class DataPreprocessor:
             * droped_columns (list, optional): list of strings with the name of the columns to be removed or droped from the dataset after preprocessing. Defaults to `None`.
             * no_encoding_columns (list, optional): list of strings with the name of columns that will not be included in the label encoding process of cataegorical data. Defaults to `None`.
             * no_scaling_columns (list, optional): list of strings with the name of columns not to be included in the data scaling. Defaults to `None`.
+            * nb_pca_component (int,optional): The number of component for Prinicipal Component Analysis, if set to `None` does not perform PCA. Defaults to `None`.
             * window_size (int, optional): the size of the window in the case of window stepping the data, in case of `None` will not perform the window stepping. Defaults to `None`.
             * step (int, optional): The length of the step for window stepping,if `None` will not perform the window stepping, if smaller than `window_size` will result in overlapping windows, if equal to `window_size` performs standard window stepping, if bigger will skip some rows (not recommended). Defaults to `None`.
             * window_transformation (bool, optional): in case of True applies the function in `window_transformation_function` parameter to the window. Defaults to `False`.
@@ -109,9 +113,20 @@ class DataPreprocessor:
             scaler=scaler,
             verbose=verbose,
         )
+        if nb_pca_component:
+            self.pca_decomposed_dataset = self.pca_decomposition(
+                self.scaled_dataset,
+                excluded=target_name,
+                nb_components=nb_pca_component,
+                verbose=verbose,
+            )
+        else:
+            if verbose == 1:
+                print("No PCA decomposition done.")
+            self.pca_decomposed_dataset = self.scaled_dataset
         if verbose == 1:
             print("Automatically performing a data Cleanup from missing values.")
-        self.ml_dataset = self.scaled_dataset.dropna()
+        self.ml_dataset = self.pca_decomposed_dataset.dropna()
         self.features = self.ml_dataset.drop(target_name, axis=1)
         self.target = self.ml_dataset[target_name]
         self.target_ohe = self.one_hot_encoding(
@@ -129,60 +144,61 @@ class DataPreprocessor:
         if save_to == "parquet":
             save_parquet(self.ml_dataset, PATH, f"ml_{save_tag}", verbose=verbose)
             save_parquet(self.dl_dataset, PATH, f"dl_{save_tag}", verbose=verbose)
-        if verbose == 1:
-            print(
-                "\n\033[1mThe window stepping can take some time depending on the dataset \033[0m"
-            )
-        self.windowed_dataset = self.ml_dataset.copy(deep=True)
-        self.windowed_dataset = window_stepping(
-            self.windowed_dataset,
-            window_size=window_size,
-            step=step,
-            window_transformation=window_transformation,
-            transformation_fn=window_transformation_function,
-            transformation_kwargs=transformation_kwargs,
-            verbose=verbose,
-        )
-        self.ml_dataset_w = self.windowed_dataset.dropna()
-        self.features_w = self.ml_dataset_w.drop(target_name, axis=1)
-        if window_transformation == True:
-            self.target_w = self.ml_dataset_w[target_name].round()
-        else:
-            self.target_w = self.ml_dataset_w[target_name]
-        self.target_ohe_w = self.one_hot_encoding(
-            self.target_w, target=target_name, verbose=verbose
-        )
-        self.preprocessed_dataset_w = self.ml_dataset_w.copy(deep=True)
-        for i in self.target_ohe_w.columns:
-            column_name = f"{target_name} {i}"
-            self.preprocessed_dataset_w[column_name] = self.target_ohe_w[i]
-        self.dl_dataset_w = self.preprocessed_dataset_w
-        if save_to == "csv":
-            save_csv(
-                self.ml_dataset_w,
-                PATH,
-                f"ml_{save_tag}_w({window_size})_s({step})",
+        if window_size and step:
+            if verbose == 1:
+                print(
+                    "\n\033[1mThe window stepping can take some time depending on the dataset \033[0m"
+                )
+            self.windowed_dataset = self.ml_dataset.copy(deep=True)
+            self.windowed_dataset = window_stepping(
+                self.windowed_dataset,
+                window_size=window_size,
+                step=step,
+                window_transformation=window_transformation,
+                transformation_fn=window_transformation_function,
+                transformation_kwargs=transformation_kwargs,
                 verbose=verbose,
             )
-            save_csv(
-                self.dl_dataset_w,
-                PATH,
-                f"dl_{save_tag}_w({window_size})_s({step})",
-                verbose=verbose,
+            self.ml_dataset_w = self.windowed_dataset.dropna()
+            self.features_w = self.ml_dataset_w.drop(target_name, axis=1)
+            if window_transformation == True:
+                self.target_w = self.ml_dataset_w[target_name].round()
+            else:
+                self.target_w = self.ml_dataset_w[target_name]
+            self.target_ohe_w = self.one_hot_encoding(
+                self.target_w, target=target_name, verbose=verbose
             )
-        if save_to == "parquet":
-            save_parquet(
-                self.ml_dataset_w,
-                PATH,
-                f"ml_{save_tag}_w({window_size})_s({step})",
-                verbose=verbose,
-            )
-            save_parquet(
-                self.dl_dataset_w,
-                PATH,
-                f"dl_{save_tag}_w({window_size})_s({step})",
-                verbose=verbose,
-            )
+            self.preprocessed_dataset_w = self.ml_dataset_w.copy(deep=True)
+            for i in self.target_ohe_w.columns:
+                column_name = f"{target_name} {i}"
+                self.preprocessed_dataset_w[column_name] = self.target_ohe_w[i]
+            self.dl_dataset_w = self.preprocessed_dataset_w
+            if save_to == "csv":
+                save_csv(
+                    self.ml_dataset_w,
+                    PATH,
+                    f"ml_{save_tag}_w({window_size})_s({step})",
+                    verbose=verbose,
+                )
+                save_csv(
+                    self.dl_dataset_w,
+                    PATH,
+                    f"dl_{save_tag}_w({window_size})_s({step})",
+                    verbose=verbose,
+                )
+            if save_to == "parquet":
+                save_parquet(
+                    self.ml_dataset_w,
+                    PATH,
+                    f"ml_{save_tag}_w({window_size})_s({step})",
+                    verbose=verbose,
+                )
+                save_parquet(
+                    self.dl_dataset_w,
+                    PATH,
+                    f"dl_{save_tag}_w({window_size})_s({step})",
+                    verbose=verbose,
+                )
         self.exec_time = time.perf_counter() - start_time
         self.preprocessing_info = self.scaler_name + f"({self.exec_time:.2f} s)"
         if verbose == 1:
@@ -283,6 +299,37 @@ class DataPreprocessor:
         return scaled_df, scaler_name
 
     @staticmethod
+    def pca_decomposition(data, excluded=None, nb_components=None, verbose=1):
+        """A static method for Principal Component Analysis.
+
+        Args:
+            data (DataFrame or numpy array): data to be decomposed by Principal Component Analysis.
+            excluded (list, optional): list of column names to be excluded from the PCA decomposition. Defaults to `None`.
+            nb_components (_type_, optional): the number of PCA components to produce. Defaults to `None`.
+            verbose (int, optional): An integer of the verbosity of the operation can be ``0`` or ``1``. Defaults to ``1``.
+
+        Returns:
+            DataFrame: A new dataframe with the pca components and the excluded columns as in the entry.
+        """
+        excluded = [] if excluded is None else excluded
+        data = DataFrame(data)
+        X = data.drop(excluded, axis=1)
+        y = data[excluded]
+        pca = PCA(n_components=nb_components)
+        df = pca.fit_transform(X)
+        df = DataFrame(df)
+        df[excluded] = y
+        if verbose == 1:
+            print(
+                f"\nData decomposed using PCA into {nb_components} components successfully.\n"
+            )
+            components_ratio = [
+                "{:.2%}".format(i) for i in pca.explained_variance_ratio_
+            ]
+            print(f"The components ratio is :\n{components_ratio}\n")
+        return df
+
+    @staticmethod
     def one_hot_encoding(data, target="target", verbose=1):
         """A static method to convert a single column to a number of columns corresponding to the number of unique values in that columns by One Hot encoding.
         Example:
@@ -342,6 +389,7 @@ if __name__ == "__main__":
         droped_columns=["Timestamp (seconds)"],
         no_encoding_columns=None,
         no_scaling_columns=None,
+        nb_pca_component=None,
         scaler=2,
         window_size=60,
         step=10,
