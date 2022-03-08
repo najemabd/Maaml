@@ -428,7 +428,9 @@ def window_stepping(
                             raise TypeError(
                                 "\033[1mCan not apply window_transformation function, the function does not conform with the data types.\033[0m"
                             )
-                    final_data = final_data.append(window_segment, ignore_index=True)
+                    final_data = pd.concat(
+                        [final_data, window_segment], ignore_index=True
+                    )
                 if verbose == 1:
                     if window_transformation is True:
                         print("\n\033[1mWindow transformation applied.\033[0m")
@@ -483,6 +485,66 @@ def transposing(data, excluded=None, verbose=0):
     else:
         raise ValueError("Data is not acceptable format.")
     return data
+
+
+def window_sliding(
+    data=None,
+    window_size=None,
+    step=None,
+    timestamps_column=None,
+    target_column=None,
+    flat=True,
+    verbose=1,
+) -> DataFrame:
+    data = DataFrame(data)
+    final_data = DataFrame()
+    ## begin session extraction
+    data_timestamps = data[timestamps_column]
+    timestamps = [0]
+    for index in range(0, len(data_timestamps) - 1):
+        if data_timestamps[index] > data_timestamps[index + 1]:
+            timestamps.append(index + 1)
+    timestamps.append(len(timestamps_column) - 1)
+    if verbose == 1:
+        print("the timestamps limits: ", timestamps)
+    ## end session extraction
+    for start, finish in zip(timestamps, timestamps[1:]):
+        session = data[start:finish]
+        if verbose == 1:
+            print("THE SESSION IS: \n", session)
+        for i in range(0, len(session) - 1):
+            window_segment = session[i * step : i * step + window_size]
+            if len(window_segment) == window_size:
+                ## begin  transformation
+                window_segment = window_segment.reset_index(drop=True)
+                if target_column is None:
+                    window_segment = window_segment.T
+                elif target_column is not None:
+                    target = window_segment[target_column]
+                    window_segment = window_segment.drop(target_column, axis=1).T
+                ## end transformation
+                ## begin flatten data
+                if flat is True:
+                    window_segment = DataFrame(
+                        window_segment.values.flatten()
+                    )  ## final_data.T.values.flatten() ### can flatten every individual instant of the window
+                    window_segment = window_segment.T
+                ## end flatten data
+                if target_column is not None:
+                    if len(target.unique()) > 1:
+                        raise ValueError(
+                            f"{target.unique()} The target value has more than a unique value for a window, there's more than a one target in the same data session."
+                        )
+                    window_segment[target_column] = target.unique()[0]
+                final_data = pd.concat([final_data, window_segment], ignore_index=True)
+
+            else:
+                breaking_point = i
+                if verbose == 1:
+                    print(f"The iteration breaking point is: {breaking_point}")
+                    print(f"length of result: {breaking_point*window_size}")
+                break
+    return final_data
 
 
 if __name__ == "__main__":
