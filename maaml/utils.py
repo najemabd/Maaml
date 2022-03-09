@@ -509,7 +509,7 @@ def window_sliding(
         print("the timestamps limits: ", timestamps)
     ## end session extraction
     for start, finish in zip(timestamps, timestamps[1:]):
-        session = data[start:finish]
+        session = data[start:finish].drop(timestamps_column, axis=1)
         if verbose == 1:
             print("THE SESSION IS: \n", session)
         for i in range(0, len(session) - 1):
